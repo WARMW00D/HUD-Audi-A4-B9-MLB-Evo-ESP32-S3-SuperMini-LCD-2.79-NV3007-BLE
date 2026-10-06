@@ -6,6 +6,12 @@ A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, sp
 
 **Firmware: v29.0. Android app: 1.2.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. No prebuilt firmware is included; Android APKs are available in the companion app release below.
 
+## HUD on hardware
+
+![ESP32-S3 SuperMini HUD on the NV3007 2.79-inch display](docs/images/hud-supermini-nv3007.jpg)
+
+Photo supplied by WARMW00D: speed, gear, speed-limit sign, navigation and fuel information on the NV3007 display.
+
 ## Download Android APK
 
 [Version 1.2 release page](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.2) — **Pre-release**, pending real-device OTA validation.

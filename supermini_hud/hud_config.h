@@ -81,7 +81,7 @@
 #define HUD_LANG       HUD_LANG_RU
 #define HUD_UNITS      HUD_UNITS_KM
 #define HUD_VOLUME_GAL 0     /* «сколько заправить»: 0 — литры, 1 — галлоны США */
-#define HUD_TANK_L     54    /* объём бака, л (A4 B9 — 54 л; пока константа)              */
+#define HUD_TANK_L     54    /* начальный объём бака, л; 1..200, затем настройка BLE/NVS              */
 
 /* ---- Бар ускорения (по CAN) ----
    По нижнему краю экрана под стрелкой навигации квадраты расходятся из центра: зелёные — разгон,
@@ -92,7 +92,7 @@
    Полная шкала разгона — 0..HUD_ACCEL_REF_KMH за HUD_ACCEL_REF_SEC с
    (100 км/ч за 9 с = 3.09 м/с²), торможения — HUD_BRAKE_FULL_MS2 (6 м/с² —
    резкое, но не экстренное торможение; экстренное 8-10 упрётся в край). */
-#define HUD_ACCEL_BAR         0      /* бар ускорения */
+#define HUD_ACCEL_BAR         0      /* начальное состояние бара; затем BLE/NVS */
 #define HUD_ACCEL_REF_KMH     100
 #define HUD_ACCEL_REF_SEC     9
 #define HUD_BRAKE_FULL_MS2    6

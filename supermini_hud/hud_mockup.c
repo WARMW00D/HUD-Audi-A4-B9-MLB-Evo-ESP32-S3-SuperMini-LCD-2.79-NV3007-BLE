@@ -200,6 +200,9 @@ static volatile bool    g_psd   = HUD_PSD_LIMITS;
 static volatile bool    g_accel = HUD_ACCEL_BAR;
 static volatile bool    g_vze   = HUD_VZE_SIGNS;
 static volatile bool    g_gal   = HUD_VOLUME_GAL;
+static volatile uint8_t g_tank_l = HUD_TANK_L;
+void hud_set_tank_l(uint8_t litres) { if (litres >= 1 && litres <= 200) g_tank_l = litres; }
+uint8_t hud_get_tank_l(void) { return g_tank_l; }
 void    hud_set_gallons(bool on)     { g_gal = on; }
 bool    hud_get_gallons(void)        { return g_gal; }
 void    hud_set_vze(bool on)         { g_vze = on; }
@@ -656,7 +659,7 @@ static void hud_update_cb(lv_timer_t *t)
     {
         bool ok = d.valid & V_BCFUEL;
         if (ok) {
-            float l = HUD_TANK_L * (100u - d.bc_fuel_pct) / 100.0f;
+            float l = g_tank_l * (100u - d.bc_fuel_pct) / 100.0f;
             if (g_gal) {
                 unsigned g10 = (unsigned)(l / 3.78541f * 10.0f + 0.5f);       /* галлоны США */
                 snprintf(buf, sizeof buf, "%u.%u gal", g10 / 10, g10 % 10);

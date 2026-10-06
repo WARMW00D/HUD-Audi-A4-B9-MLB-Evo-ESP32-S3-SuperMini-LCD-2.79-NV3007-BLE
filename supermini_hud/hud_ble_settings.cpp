@@ -16,12 +16,14 @@ static_assert(HUD_SETTINGS_PIN >= 100000 && HUD_SETTINGS_PIN <= 999999,
 #error "HUD settings use legacy directed advertising: disable extended advertising."
 #endif
 static const char *SERVICE = "74d0a100-3d92-4f50-9b1a-478142000001";
-static const char *UUIDS[5] = {
+static const char *UUIDS[7] = {
     "74d0a100-3d92-4f50-9b1a-478142000002", /* PSD */
     "74d0a100-3d92-4f50-9b1a-478142000003", /* VZE */
     "74d0a100-3d92-4f50-9b1a-478142000004", /* RU / EN */
     "74d0a100-3d92-4f50-9b1a-478142000005", /* km / miles */
-    "74d0a100-3d92-4f50-9b1a-478142000006"  /* litres / US gallons */
+    "74d0a100-3d92-4f50-9b1a-478142000006", /* litres / US gallons */
+    "74d0a100-3d92-4f50-9b1a-478142000007", /* tank capacity, litres: 1..200 */
+    "74d0a100-3d92-4f50-9b1a-478142000008"  /* acceleration bar: 0 / 1 */
 };
 struct Stored {
     uint8_t version;
@@ -30,11 +32,17 @@ struct Stored {
     uint8_t type;
     char address[18];
 };
+// Keep the legacy owner/settings record byte-for-byte compatible with v28/v29.
+// Additional settings use separate NVS keys; each write commits before apply().
 static Stored state;
+static uint8_t extra[2];
+static uint8_t &setting(unsigned i) { return i < 5 ? state.value[i] : extra[i - 5]; }
+static bool valid_setting(unsigned i, uint8_t v) { return i == 5 ? v >= 1 && v <= 200 : v <= 1; }
+static_assert(HUD_TANK_L >= 1 && HUD_TANK_L <= 200, "Tank capacity must be 1..200 litres.");
 static Preferences prefs;
 static SemaphoreHandle_t mutex;
 static NimBLEServer *server;
-static NimBLECharacteristic *chars[5];
+static NimBLECharacteristic *chars[7];
 static bool gateway_security;
 static uint16_t phone_handle = BLE_HS_CONN_HANDLE_NONE;
 static uint32_t phone_since;
@@ -66,6 +74,7 @@ static void apply() {
     hud_set_psd(state.value[0]); hud_set_vze(state.value[1]);
     hud_set_lang(state.value[2]); hud_set_units(state.value[3]);
     hud_set_gallons(state.value[4]);
+    hud_set_tank_l(extra[0]); hud_set_accel_bar(extra[1]);
 }
 /* Call under mutex, never automatically advertise from disconnect callbacks. */
 static void advertise() {
@@ -162,7 +171,7 @@ public:
     explicit SettingCallbacks(unsigned i) : index(i) {}
     void onRead(NimBLECharacteristic *c, NimBLEConnInfo &ci) override {
         bool ok;
-        { Lock lock; ok = authorized(ci); c->setValue(&state.value[index], ok ? 1 : 0); }
+        { Lock lock; ok = authorized(ci); c->setValue(&setting(index), ok ? 1 : 0); }
         if (!ok) server->disconnect(ci);
     }
     void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &ci) override {
@@ -172,19 +181,28 @@ public:
             ok = authorized(ci);
             if (ok) {
                 const auto v = c->getValue();
-                if (v.size() == 1 && v.data()[0] <= 1) {
-                    Stored next = state; next.value[index] = v.data()[0];
-                    if (next.value[index] == state.value[index] || save(next)) { state = next; apply(); }
+                if (v.size() == 1 && valid_setting(index, (uint8_t)v.data()[0])) {
+                    const uint8_t value = (uint8_t)v.data()[0];
+                    bool saved = value == setting(index);
+                    if (!saved && index < 5) {
+                        Stored next = state; next.value[index] = value;
+                        saved = save(next);
+                        if (saved) state = next;
+                    } else if (!saved) {
+                        saved = prefs.putUChar(index == 5 ? "tank-l" : "accel-bar", value) == 1;
+                        if (saved) setting(index) = value;
+                    }
+                    if (saved) apply();
                     else Serial.println("[settings] NVS write failed; value unchanged.");
-                } else Serial.println("[settings] Expected one byte: 00 or 01.");
-                c->setValue(&state.value[index], 1); /* readback is authoritative */
+                } else Serial.println("[settings] Invalid setting payload or range.");
+                c->setValue(&setting(index), 1); /* readback is authoritative */
             }
         }
         if (!ok) server->disconnect(ci);
     }
 };
-static SettingCallbacks setting_callbacks[5] = {
-    SettingCallbacks(0), SettingCallbacks(1), SettingCallbacks(2), SettingCallbacks(3), SettingCallbacks(4)
+static SettingCallbacks setting_callbacks[7] = {
+    SettingCallbacks(0), SettingCallbacks(1), SettingCallbacks(2), SettingCallbacks(3), SettingCallbacks(4), SettingCallbacks(5), SettingCallbacks(6)
 };
 void hud_ble_settings_begin() {
     mutex = xSemaphoreCreateMutex();
@@ -207,6 +225,10 @@ void hud_ble_settings_begin() {
         if (!valid) { Serial.println("[settings] Invalid saved state; refusing to open pairing."); abort(); }
         state = saved;
     }
+    extra[0] = prefs.getUChar("tank-l", HUD_TANK_L);
+    extra[1] = prefs.getUChar("accel-bar", HUD_ACCEL_BAR);
+    if (!valid_setting(5, extra[0])) extra[0] = HUD_TANK_L;
+    if (!valid_setting(6, extra[1])) extra[1] = HUD_ACCEL_BAR;
     apply();
     pinMode(HUD_SETTINGS_BOOT_PIN, INPUT_PULLUP);
     NimBLEDevice::init(HUD_SETTINGS_BLE_NAME);
@@ -218,19 +240,19 @@ void hud_ble_settings_begin() {
     server->setCallbacks(&server_callbacks, false);
     server->advertiseOnDisconnect(false);
     auto *service = server->createService(SERVICE);
-    for (unsigned i = 0; i < 5; ++i) {
+    for (unsigned i = 0; i < 7; ++i) {
         chars[i] = service->createCharacteristic(UUIDS[i], NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE |
             NIMBLE_PROPERTY::READ_AUTHEN | NIMBLE_PROPERTY::WRITE_AUTHEN);
         chars[i]->setCallbacks(&setting_callbacks[i]);
-        chars[i]->setValue(&state.value[i], 1);
+        chars[i]->setValue(&setting(i), 1);
     }
     service->start();
     hud_ble_ota_begin(server, ota_authorized_handle);
     if (!server->start()) abort();
     // The bonded Android may cache the pre-OTA GATT database.
-    if (prefs.getUChar("gatt-schema", 0) != 1) {
+    if (prefs.getUChar("gatt-schema", 0) != 2) {
         server->sendServiceChangedIndication();
-        if (prefs.putUChar("gatt-schema", 1) != 1) Serial.println("[settings] Could not save GATT schema marker.");
+        if (prefs.putUChar("gatt-schema", 2) != 1) Serial.println("[settings] Could not save GATT schema marker.");
     }
     Lock lock; advertise();
     Serial.printf("[settings] ready; BOOT GPIO%d, owner=%s\n", HUD_SETTINGS_BOOT_PIN, state.owned ? "saved" : "none");

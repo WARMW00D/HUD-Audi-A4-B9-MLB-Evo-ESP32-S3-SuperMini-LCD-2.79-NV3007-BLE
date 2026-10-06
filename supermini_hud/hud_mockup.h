@@ -22,6 +22,8 @@ void    hud_set_vze(bool on);          /* знаки из VZE_01 (камера /
 bool    hud_get_vze(void);
 void    hud_set_gallons(bool on);      /* «сколько заправить» в галлонах (true) или литрах */
 bool    hud_get_gallons(void);
+void    hud_set_tank_l(uint8_t litres);
+uint8_t hud_get_tank_l(void);
 void    hud_set_accel_bar(bool on);    /* бар ускорения вкл/выкл                        */
 bool    hud_get_accel_bar(void);
 

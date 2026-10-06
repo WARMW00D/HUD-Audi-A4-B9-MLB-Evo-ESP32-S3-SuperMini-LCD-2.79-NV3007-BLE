@@ -4,7 +4,17 @@
 
 A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, speed limiter, driver assistance, traffic signs, doors and navigation. This is the compact **428 × 142 NV3007** adaptation of the [Waveshare 3.49″ project](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Waveshare-ESP32-S3-Touch-LCD-3.49), with Android settings and firmware updates over BLE.
 
-**Firmware: v29.0. Android app: 1.2.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. No prebuilt firmware or APK is included.
+**Firmware: v29.0. Android app: 1.2.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. No prebuilt firmware is included; Android APKs are available in the companion app release below.
+
+## Download Android APK
+
+[Version 1.2 release page](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.2) — **Pre-release**, pending real-device OTA validation.
+
+- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.2/HUD-Control-1.2-release.apk) — signed build for normal installation, 55,768 bytes.
+- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.2/HUD-Control-1.2-debug-test-only.apk) — 61,253 bytes; `testOnly=true`, install with `adb install -t HUD-Control-1.2-debug-test-only.apk`.
+- [SHA-256 checksums](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.2/SHA256SUMS.txt).
+
+Both are maintainer-supplied version 1.2 (versionCode 3). APK v2 signatures and content digests were verified. Release and debug use different signing keys: switching requires uninstalling the old app and removes its local settings. Keep the release signing key for future updates. OTA requires firmware v29.0 initially installed over USB with the two-slot partition table.
 
 ## What the HUD shows
 
@@ -97,7 +107,7 @@ For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its 
 
 ## Android settings and BLE OTA
 
-1. Build and install the [Android app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).
+1. Download the APK above or build and install the [Android app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).
 2. Find `HUD-SuperMini`, connect and complete Android bonding. Default phone PIN: **482731**.
 3. The first authenticated phone becomes the owner. Settings changes are read back and stored in NVS.
 4. For OTA, export **`supermini_hud.ino.bin`** from Arduino IDE. Select that application image in the app, then confirm the update.
@@ -135,7 +145,7 @@ For bench testing, use `HUD_SRC_FAKE` or a compatible BLE log player. Enable `HU
 
 ## Validation status
 
-The user reported that the earlier SuperMini HUD and Android settings app worked. **v29.0 OTA has host tests but still needs an ESP32 build, Android build and real-device transfer test.** No such builds are claimed here.
+The user reported that the earlier SuperMini HUD and Android settings app worked. **v29.0 OTA has host tests but still needs an ESP32 build and real-device transfer test.** Maintainer-supplied Android v1.2 APKs are published; their signatures and integrity were verified. Builds were not run here; Android lint results remain pending.
 
 Host tests cover real SHA-256 through OpenSSL with mocked NimBLE/ESP-IDF: full transfer, commit only after verification, invalid size/header/chip/hash, flash failures, offsets, cancel/disconnect/timeout, owner authorization, duplicate commit and lost final ACK. Display scaling, dirty strips, decoder and settings/NVS also have host tests. Mocks do not establish real BLE interoperability or flash reliability.
 

@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "hud_overspeed.h"
 #include "hud_config.h"
 #include "user_config.h"
 #include "hud_mockup.h"
@@ -201,6 +202,9 @@ static volatile bool    g_accel = HUD_ACCEL_BAR;
 static volatile bool    g_vze   = HUD_VZE_SIGNS;
 static volatile bool    g_gal   = HUD_VOLUME_GAL;
 static volatile uint8_t g_tank_l = HUD_TANK_L;
+static volatile uint8_t g_speed_tol = HUD_OVERSPEED_TOL_KMH;
+void hud_set_overspeed_tol(uint8_t kmh) { if (kmh <= 100) g_speed_tol = kmh; }
+uint8_t hud_get_overspeed_tol(void) { return g_speed_tol; }
 void hud_set_tank_l(uint8_t litres) { if (litres >= 1 && litres <= 200) g_tank_l = litres; }
 uint8_t hud_get_tank_l(void) { return g_tank_l; }
 void    hud_set_gallons(bool on)     { g_gal = on; }
@@ -596,11 +600,7 @@ static void hud_update_cb(lv_timer_t *t)
         int opa = 0;
         if (lim_kmh_for_speed && (d.valid & V_SPEED) && !lv_obj_has_flag(speed_lbl, LV_OBJ_FLAG_HIDDEN)) {
             float ex = (float)d.speed_kmh - (float)lim_kmh_for_speed;
-            float r  = ex / (float)HUD_OVERSPEED_TOL_KMH;                 /* доля допуска */
-            float st = HUD_OVERSPEED_START / 100.0f;
-            float k  = (r - st) / (1.0f - st);
-            if (k > 1) k = 1;
-            if (k > 0) opa = (int)(k * 255);
+            opa = hud_overspeed_opacity(ex, g_speed_tol, HUD_OVERSPEED_START);
         }
         const char *txt_speed = lv_label_get_text(speed_lbl);
         for (int i = 0; i < 8; i++) {

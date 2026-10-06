@@ -11,6 +11,7 @@ extern "C" void hud_set_units(uint8_t){}
 extern "C" void hud_set_gallons(bool){}
 extern "C" void hud_set_tank_l(uint8_t){}
 extern "C" void hud_set_accel_bar(bool){}
+extern "C" void hud_set_overspeed_tol(uint8_t){}
 
 static NimBLEConnInfo phone;
 static std::vector<uint8_t> image(1031,0x42);

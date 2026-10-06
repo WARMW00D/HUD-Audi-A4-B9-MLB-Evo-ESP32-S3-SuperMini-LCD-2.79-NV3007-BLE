@@ -16,14 +16,15 @@ static_assert(HUD_SETTINGS_PIN >= 100000 && HUD_SETTINGS_PIN <= 999999,
 #error "HUD settings use legacy directed advertising: disable extended advertising."
 #endif
 static const char *SERVICE = "74d0a100-3d92-4f50-9b1a-478142000001";
-static const char *UUIDS[7] = {
+static const char *UUIDS[8] = {
     "74d0a100-3d92-4f50-9b1a-478142000002", /* PSD */
     "74d0a100-3d92-4f50-9b1a-478142000003", /* VZE */
     "74d0a100-3d92-4f50-9b1a-478142000004", /* RU / EN */
     "74d0a100-3d92-4f50-9b1a-478142000005", /* km / miles */
     "74d0a100-3d92-4f50-9b1a-478142000006", /* litres / US gallons */
     "74d0a100-3d92-4f50-9b1a-478142000007", /* tank capacity, litres: 1..200 */
-    "74d0a100-3d92-4f50-9b1a-478142000008"  /* acceleration bar: 0 / 1 */
+    "74d0a100-3d92-4f50-9b1a-478142000008", /* acceleration bar: 0 / 1 */
+    "74d0a100-3d92-4f50-9b1a-478142000009"  /* overspeed tolerance: 0..100 km/h */
 };
 struct Stored {
     uint8_t version;
@@ -34,15 +35,17 @@ struct Stored {
 };
 // Keep the legacy owner/settings record byte-for-byte compatible with v28/v29.
 // Additional settings use separate NVS keys; each write commits before apply().
+static_assert(HUD_OVERSPEED_TOL_KMH >= 0 && HUD_OVERSPEED_TOL_KMH <= 100, "Tolerance must be 0..100 km/h.");
 static Stored state;
-static uint8_t extra[2];
+static uint8_t extra[3];
+static const char *EXTRA_KEYS[3] = {"tank-l", "accel-bar", "speed-tol"};
 static uint8_t &setting(unsigned i) { return i < 5 ? state.value[i] : extra[i - 5]; }
-static bool valid_setting(unsigned i, uint8_t v) { return i == 5 ? v >= 1 && v <= 200 : v <= 1; }
+static bool valid_setting(unsigned i, uint8_t v) { return i == 5 ? v >= 1 && v <= 200 : i == 7 ? v <= 100 : v <= 1; }
 static_assert(HUD_TANK_L >= 1 && HUD_TANK_L <= 200, "Tank capacity must be 1..200 litres.");
 static Preferences prefs;
 static SemaphoreHandle_t mutex;
 static NimBLEServer *server;
-static NimBLECharacteristic *chars[7];
+static NimBLECharacteristic *chars[8];
 static bool gateway_security;
 static uint16_t phone_handle = BLE_HS_CONN_HANDLE_NONE;
 static uint32_t phone_since;
@@ -74,7 +77,7 @@ static void apply() {
     hud_set_psd(state.value[0]); hud_set_vze(state.value[1]);
     hud_set_lang(state.value[2]); hud_set_units(state.value[3]);
     hud_set_gallons(state.value[4]);
-    hud_set_tank_l(extra[0]); hud_set_accel_bar(extra[1]);
+    hud_set_tank_l(extra[0]); hud_set_accel_bar(extra[1]); hud_set_overspeed_tol(extra[2]);
 }
 /* Call under mutex, never automatically advertise from disconnect callbacks. */
 static void advertise() {
@@ -189,7 +192,7 @@ public:
                         saved = save(next);
                         if (saved) state = next;
                     } else if (!saved) {
-                        saved = prefs.putUChar(index == 5 ? "tank-l" : "accel-bar", value) == 1;
+                        saved = prefs.putUChar(EXTRA_KEYS[index - 5], value) == 1;
                         if (saved) setting(index) = value;
                     }
                     if (saved) apply();
@@ -201,8 +204,8 @@ public:
         if (!ok) server->disconnect(ci);
     }
 };
-static SettingCallbacks setting_callbacks[7] = {
-    SettingCallbacks(0), SettingCallbacks(1), SettingCallbacks(2), SettingCallbacks(3), SettingCallbacks(4), SettingCallbacks(5), SettingCallbacks(6)
+static SettingCallbacks setting_callbacks[8] = {
+    SettingCallbacks(0), SettingCallbacks(1), SettingCallbacks(2), SettingCallbacks(3), SettingCallbacks(4), SettingCallbacks(5), SettingCallbacks(6), SettingCallbacks(7)
 };
 void hud_ble_settings_begin() {
     mutex = xSemaphoreCreateMutex();
@@ -229,6 +232,8 @@ void hud_ble_settings_begin() {
     extra[1] = prefs.getUChar("accel-bar", HUD_ACCEL_BAR);
     if (!valid_setting(5, extra[0])) extra[0] = HUD_TANK_L;
     if (!valid_setting(6, extra[1])) extra[1] = HUD_ACCEL_BAR;
+    extra[2] = prefs.getUChar("speed-tol", HUD_OVERSPEED_TOL_KMH);
+    if (!valid_setting(7, extra[2])) extra[2] = HUD_OVERSPEED_TOL_KMH;
     apply();
     pinMode(HUD_SETTINGS_BOOT_PIN, INPUT_PULLUP);
     NimBLEDevice::init(HUD_SETTINGS_BLE_NAME);
@@ -240,7 +245,7 @@ void hud_ble_settings_begin() {
     server->setCallbacks(&server_callbacks, false);
     server->advertiseOnDisconnect(false);
     auto *service = server->createService(SERVICE);
-    for (unsigned i = 0; i < 7; ++i) {
+    for (unsigned i = 0; i < 8; ++i) {
         chars[i] = service->createCharacteristic(UUIDS[i], NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE |
             NIMBLE_PROPERTY::READ_AUTHEN | NIMBLE_PROPERTY::WRITE_AUTHEN);
         chars[i]->setCallbacks(&setting_callbacks[i]);
@@ -250,9 +255,9 @@ void hud_ble_settings_begin() {
     hud_ble_ota_begin(server, ota_authorized_handle);
     if (!server->start()) abort();
     // The bonded Android may cache the pre-OTA GATT database.
-    if (prefs.getUChar("gatt-schema", 0) != 2) {
+    if (prefs.getUChar("gatt-schema", 0) != 3) {
         server->sendServiceChangedIndication();
-        if (prefs.putUChar("gatt-schema", 2) != 1) Serial.println("[settings] Could not save GATT schema marker.");
+        if (prefs.putUChar("gatt-schema", 3) != 1) Serial.println("[settings] Could not save GATT schema marker.");
     }
     Lock lock; advertise();
     Serial.printf("[settings] ready; BOOT GPIO%d, owner=%s\n", HUD_SETTINGS_BOOT_PIN, state.owned ? "saved" : "none");

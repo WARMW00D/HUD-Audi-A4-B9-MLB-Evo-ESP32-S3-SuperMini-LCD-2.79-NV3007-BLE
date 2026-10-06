@@ -6,13 +6,14 @@ A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, sp
 
 **Firmware: v29.1. Android app: 1.3.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. No prebuilt firmware is included; Android APKs are available in the companion app release below.
 
-## Tank capacity and acceleration bar
+## Tank capacity, acceleration bar and overspeed tolerance
 
 Source versions: **HUD firmware v29.1 / Android app 1.3 (versionCode 4)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
-- Both settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
+- **Overspeed tolerance:** set **0–100 km/h**, default **20 km/h**, always entered in km/h even with mph selected. The red speed outline fades in from 75% of tolerance and is fully red at 100%; zero makes any positive overspeed fully red.
+- All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
 These controls need **app 1.3 + firmware v29.1**. App 1.3 still supports older firmware: missing controls are disabled. The APKs in release v1.2 do not include these controls; rebuild app 1.3. New binaries were not built here. If v29.0 and its OTA partition table are already installed, v29.1 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
 

@@ -173,7 +173,7 @@ CAN signal verification depends on the vehicle and equipment. The inherited obse
 - `supermini_hud/tests/` — host tests and stubs.
 - `supermini_hud/tools/` — image/font generators, previews and CAN utilities.
 - `docs/` — OTA and CAN/gateway guides in English and Russian.
-- `schematics/` — revision 2 SVG, PNG and PDF; display DC-DC input is 5 V.
+- `schematics/` — Russian and English revision 3 SVG, PNG and PDF with the Infortainment CAN label; display DC-DC input is 5 V. Revision 2 remains available.
 
 ## Credits and license
 

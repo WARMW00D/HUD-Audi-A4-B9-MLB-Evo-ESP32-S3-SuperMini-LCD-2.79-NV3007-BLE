@@ -67,9 +67,9 @@ LVGL renders a compact 518 × 172 canvas, uniformly scales it to 428 × 142, and
 
 **Display VDD comes from the separate converter’s 3.3 V output (`3V3_D`). Do not connect that output to the board’s 3V3 pin (`3V3_P`).** All grounds are common. CAN-module VCC comes from the board’s 5V pin; VIO and S come from the board’s 3V3 pin. SN65HVD230 is not used.
 
-![HUD wiring, revision 2](schematics/HUD_supermini_NV3007_rev2_DCDC.png)
+![HUD wiring, revision 3](schematics/HUD_supermini_NV3007_rev3_en.png)
 
-[Editable SVG](schematics/HUD_supermini_NV3007_rev2_DCDC.svg) · [PDF](schematics/HUD_supermini_NV3007_rev2_DCDC.pdf)
+[Editable SVG](schematics/HUD_supermini_NV3007_rev3_en.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_en.pdf)
 
 | ESP32-S3 | Connection |
 |---|---|
@@ -114,7 +114,7 @@ For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its 
 ## Android settings and BLE OTA
 
 1. Download the APK above or build and install the [Android app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).
-2. Find `HUD-SuperMini`, connect and complete Android bonding. Default phone PIN: **482731**.
+2. Find `HUD-SuperMini`, connect and complete Android bonding. Phone pairing PIN: see `HUD_SETTINGS_PIN` in [`user_config.h`](supermini_hud/user_config.h).
 3. The first authenticated phone becomes the owner. Settings changes are read back and stored in NVS.
 4. For OTA, export **`supermini_hud.ino.bin`** from Arduino IDE. Select that application image in the app, then confirm the update.
 5. Keep power stable and the phone app open. After verification and boot-slot selection, the HUD reboots; reconnect and check operation.

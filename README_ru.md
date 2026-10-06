@@ -67,9 +67,9 @@ LVGL рисует компактный холст 518 × 172, равномерн
 
 **VDD дисплея получает 3,3 В от отдельного преобразователя (`3V3_D`). Его выход не соединяется с 3V3 платы (`3V3_P`).** Все GND общие. CAN VCC питается от 5V платы; VIO и S — от 3V3 платы. SN65HVD230 не используется.
 
-![Схема HUD, ревизия 2](schematics/HUD_supermini_NV3007_rev2_DCDC.png)
+![Схема HUD, ревизия 3](schematics/HUD_supermini_NV3007_rev3_ru.png)
 
-[Редактируемый SVG](schematics/HUD_supermini_NV3007_rev2_DCDC.svg) · [PDF](schematics/HUD_supermini_NV3007_rev2_DCDC.pdf)
+[Редактируемый SVG](schematics/HUD_supermini_NV3007_rev3_ru.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_ru.pdf)
 
 | ESP32-S3 | Подключение |
 |---|---|
@@ -114,7 +114,7 @@ CAN CTX/TXD → 10 кΩ → 3V3 платы; S → VIO для silent mode. CAN-H 
 ## Настройки Android и BLE OTA
 
 1. Скачать APK выше либо собрать и установить [Android-приложение](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).
-2. Найти `HUD-SuperMini`, подключиться и завершить системное сопряжение. PIN телефона по умолчанию: **482731**.
+2. Найти `HUD-SuperMini`, подключиться и завершить системное сопряжение. PIN телефона: см. `HUD_SETTINGS_PIN` в [`user_config.h`](supermini_hud/user_config.h).
 3. Первый аутентифицированный телефон становится владельцем. Изменения настроек читаются обратно и сохраняются в NVS.
 4. Для OTA экспортировать **`supermini_hud.ino.bin`** из Arduino IDE. Выбрать этот app-образ в приложении и подтвердить обновление.
 5. Сохранять стабильное питание и открытое приложение. После проверки и выбора boot-раздела HUD перезапустится; подключиться вновь и проверить работу.
@@ -173,7 +173,7 @@ g++ -std=c++17 -Wno-deprecated-declarations -Itests/settings_stubs tests/test_bl
 - `supermini_hud/tests/` — host-тесты и заглушки.
 - `supermini_hud/tools/` — генераторы графики/шрифтов, превью и утилиты CAN.
 - `docs/` — инструкции OTA и CAN/шлюза на русском и английском.
-- `schematics/` — SVG, PNG, PDF ревизии 2; вход DC-DC дисплея от 5V.
+- `schematics/` — SVG, PNG, PDF на русском и английском (ревизия 3); Infortainment CAN; вход DC-DC дисплея от 5V.
 
 ## Участники и лицензия
 

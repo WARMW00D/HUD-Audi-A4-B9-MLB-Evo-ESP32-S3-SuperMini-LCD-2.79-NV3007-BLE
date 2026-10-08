@@ -1,4 +1,4 @@
-/* HUD v29.1 port: ESP32-S3 Super Mini 4 MB / 2 MB, NV3007 428x142. */
+/* HUD v29.1.3 port: ESP32-S3 Super Mini 4 MB / 2 MB, NV3007 428x142. */
 #include "user_config.h"
 #include "lvgl_port.h"
 #include "lvgl.h"
@@ -17,7 +17,7 @@ void setup()
 {
     Serial.begin(115200);
     delay(300);
-    Serial.println("[fw] HUD Super Mini v29.1 / BLE OTA");
+    Serial.println("[fw] HUD Super Mini v29.1.3 / BLE OTA");
     /* Legacy duty convention: 255 = dark, 0 = full brightness. */
     lcd_bl_pwm_bsp_init(255);
     hud_log_write("=== Super Mini / NV3007 HUD ===\n");

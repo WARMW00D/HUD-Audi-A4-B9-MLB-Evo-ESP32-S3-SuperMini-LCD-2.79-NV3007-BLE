@@ -60,6 +60,7 @@ static const AclRule ACL[] = {
     { ACL_PERMIT,           200, 0x394,      0x7FF      },  /* WBA_03: режим и № передачи */
     { ACL_PERMIT,             0, 0x366,      0x7FF      },  /* Blinkmodi_02            */
     { ACL_PERMIT,           500, 0x181,      0x7FF      },  /* VZE_01: знаки           */
+    { ACL_PERMIT,           500, 0x29C,      0x7FF      },  /* VZE_02: знаки 4/5       */
     { ACL_PERMIT, LKA_MIN_INTERVAL_MS, 0x397, 0x7FF },     /* LDW_02: Lane Assist     */
     { ACL_PERMIT,          1000, 0x583,      0x7FF      },  /* ZV_02: двери, багажник  */
     { ACL_PERMIT,             0, 0x65A,      0x7FF      },  /* BCM_01: капот (1 раз/с) */

@@ -261,7 +261,7 @@ static void fmt_dist(char *b, size_t n, uint32_t x10, uint8_t unit)
    и один раз печатаются в Serial, чтобы дописать таблицу. */
 static const NavImg *nav_pick(const NavSet *set, uint8_t main, uint8_t dir)
 {
-    uint8_t sec   = (uint8_t)(((dir + 8) >> 4) & 15);
+    uint8_t sec = (uint8_t)(((dir + 8) >> 4) & 15);
     bool    right = dir > 0x80;
     switch (main) {
     case 0x00: case 0x01: return NULL;                  /* нет символа / нет данных — ничего не рисуем */
@@ -470,7 +470,7 @@ static void hud_update_cb(lv_timer_t *t)
     vis(jam_icon, jam);
 
     /* --- значок ACC / Lane Assist ---
-       своя машина: есть, если включён ACC или LKA
+       своя машина: есть для ACC, объекта впереди или Side Assist; один LKA её не рисует
        машина впереди: ACC включён; волны: ACC регулирует (3) / водитель превышает (4)
        линии: LKA; зелёная — линия видна и LKA держит, жёлтая — линия не распознана
        или LKA не держит, оранжевая (мигает) — выход за линию */
@@ -488,13 +488,19 @@ static void hud_update_cb(lv_timer_t *t)
     vis(as_arcs, arcs);
     if (arcs) set_img_color(as_arcs, acc_col);
 
-    uint32_t own_col = acc_on ? acc_col : lka_on ? (d.lka_state == LKA_ACTIVE ? C_GREEN : C_YELLOW) : C_GRAY;
-    if (acc_on && lka_on && d.lka_state == LKA_ACTIVE) own_col = C_GREEN;
-    vis(as_own, acc_on || lka_on || obj_warn);
+    /* Собственная машина зелёная только при реально регулирующем ACC (status 3).
+       Lane Assist в одиночку никогда не перекрашивает её в зелёный. При status 4
+       водитель сам превысил заданную скорость — оставляем белый цвет ACC. */
+    bool acc_regulating = acc_v && d.acc_status == 3;
+    /* Собственная машина не зависит от Lane Assist: без ACC она серая. */
+    uint32_t own_col = acc_regulating ? C_GREEN :
+                       (acc_on && d.acc_status == 4) ? 0xffffff : C_GRAY;
+    vis(as_own, acc_on || obj_warn);
     set_img_color(as_own, own_col);
 
     /* Side Assist: машина сбоку — полоска этой стороны красная (поверх цвета LKA),
-       попытка перестроения — мигает красным + звук. Работает и без LKA / ACC. */
+       попытка перестроения — мигает красным + звук. Работает и без LKA / ACC.
+       Общий LKA_PASSIVE не задаёт цвет: цвет каждой полосы берётся из ll/lr. */
     uint8_t swa_i = 0, swa_w = 0;
 #if HUD_SWA
     if (d.valid & V_SWA) { swa_i = d.swa_info; swa_w = d.swa_warn; }
@@ -510,7 +516,6 @@ static void hud_update_cb(lv_timer_t *t)
         if (swa_w & bit)                          col = ((now % 400) < 200) ? C_SWA : 0x000000;
         else if (swa_i & bit)                     col = C_SWA;
         else if (!lka_on)                         col = C_GREEN;      /* только ACA */
-        else if (d.lka_state == LKA_PASSIVE)      col = C_YELLOW;
         else if (wr || lv == 3)                   col = ((now % 500) < 250) ? C_ORANGE : 0x000000;
         else if (lv == 2)                         col = C_GREEN;
         else                                      col = C_YELLOW;
@@ -553,8 +558,12 @@ static void hud_update_cb(lv_timer_t *t)
         if (sv) {
             SignItem x2 = vze_eval(d.sign_raw2, d.sign_sup2, 0, false);
             SignItem x3 = vze_eval(d.sign_raw3, d.sign_sup3, 0, false);
-            if (x2.mode == SIGN_LIMIT && x2.val != main.val) items[n_items++] = x2;
-            if (x3.mode == SIGN_LIMIT && x3.val != main.val && x3.val != x2.val) items[n_items++] = x3;
+            SignItem x4 = vze_eval(d.sign_raw4, d.sign_sup4, 0, false);
+            SignItem x5 = vze_eval(d.sign_raw5, d.sign_sup5, 0, false);
+            if (x2.mode == SIGN_LIMIT && x2.val != main.val && n_items < 4) items[n_items++] = x2;
+            if (x3.mode == SIGN_LIMIT && x3.val != main.val && x3.val != x2.val && n_items < 4) items[n_items++] = x3;
+            if (x4.mode == SIGN_LIMIT && x4.val != main.val && x4.val != x2.val && x4.val != x3.val && n_items < 4) items[n_items++] = x4;
+            if (x5.mode == SIGN_LIMIT && x5.val != main.val && x5.val != x2.val && x5.val != x3.val && x5.val != x4.val && n_items < 4) items[n_items++] = x5;
         }
         if ((!vze_main && psd_expl && pe_novt) || (sv && (vze_eval(d.sign_raw2, d.sign_sup2, 0, false).mode == SIGN_NOOVT ||
                                              vze_eval(d.sign_raw3, d.sign_sup3, 0, false).mode == SIGN_NOOVT)))
@@ -737,6 +746,11 @@ static void hud_update_cb(lv_timer_t *t)
             arduino_printf("[nav] манёвр main 0x%02X dir 0x%02X (%u°) z 0x%02X  дист %s  0x17[%u]: %s\n",
                            d.man_main, d.man_dir, (unsigned)(d.man_dir * 360u / 256u), d.man_z,
                            dist, d.man_raw_len, hex);
+            if (d.man_main == 0x15 || d.man_main == 0x16) {
+                arduino_printf("[nav] КОЛЬЦО: текущий сектор=%u; raw Direction=%02X, Z=%02X, side_n=%u\n",
+                               (unsigned)(((d.man_dir + 8u) >> 4) & 15u), d.man_dir,
+                               d.man_z, d.man_side_n);
+            }
         }
 #endif
         if (d.valid & V_MDIST) {

@@ -13,6 +13,7 @@ enum { HUD_SRC_ID_BLE = 0, HUD_SRC_ID_TWAI = 1, HUD_SRC_ID_FAKE = 2 };
 void hud_src_set_up(int src, bool up);   /* связь источника есть / нет           */
 void hud_src_twai_frame(void);           /* TWAI принял кадр (для выбора в AUTO) */
 bool hud_src_twai_active(void);          /* по TWAI недавно были кадры           */
+int  hud_src_current(void);               /* 1 CAN, 0 BLE/fake, -1 нет данных   */
 void hud_src_set_pair_failed(bool on);   /* BLE: сопряжение не удаётся (подсказка на экране) */
 bool hud_src_pair_failed(void);
 

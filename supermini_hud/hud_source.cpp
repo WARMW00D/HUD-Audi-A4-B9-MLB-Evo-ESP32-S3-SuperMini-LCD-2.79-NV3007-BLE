@@ -24,6 +24,13 @@ bool hud_src_twai_active(void)
     return l && (millis() - l) < HUD_AUTO_CAN_HOLD_MS;
 }
 
+int hud_src_current(void)
+{
+    if (hud_src_twai_active() || s_up[HUD_SRC_ID_TWAI]) return 1;
+    if (s_up[HUD_SRC_ID_BLE] || s_up[HUD_SRC_ID_FAKE]) return 0;
+    return -1;
+}
+
 static volatile bool s_pair_failed = false;
 void hud_src_set_pair_failed(bool on) { s_pair_failed = on; }
 bool hud_src_pair_failed(void)        { return s_pair_failed; }

@@ -72,6 +72,8 @@ typedef struct {
     uint8_t  sign_raw2, sign_raw3;           /* VZE_Verkehrszeichen_2 / _3 (19|8, 27|8) */
     uint8_t  sign_sup2, sign_sup3;           /* Anzeigeunterdrueck_Zeichen_2 / _3 (10, 9) */
     uint8_t  sign_warn;      /* VZE_Warnung_Verkehrszeichen_1 (превышение) */
+    uint8_t  sign_raw4, sign_raw5;            /* VZE_02.VZE_Verkehrszeichen_4 / _5 */
+    uint8_t  sign_sup4, sign_sup5;            /* VZE_02 suppress bits 63 / 8 */
     uint8_t  acc_tempolimit; /* ACC_12.ACC_Tempolimit (сырое 0..31)     */
     uint8_t  lka_state;      /* LKA_*                                   */
     uint8_t  lka_line_l;     /* LDW_Lernmodus_links: 0 выкл 1 нет 2 видна 3 выход */

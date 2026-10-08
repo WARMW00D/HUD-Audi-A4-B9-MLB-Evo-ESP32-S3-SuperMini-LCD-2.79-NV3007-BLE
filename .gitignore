@@ -6,5 +6,12 @@ secrets.h
 *.map
 *.o
 *.d
+*.dbc
+*.lzma
+can_log*
+replay*
+capture*
+*.asc
+*.blf
 __pycache__/
 .DS_Store

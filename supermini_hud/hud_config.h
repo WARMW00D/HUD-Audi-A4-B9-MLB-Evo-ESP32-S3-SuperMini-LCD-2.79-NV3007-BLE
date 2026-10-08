@@ -4,6 +4,12 @@
 #ifndef HUD_CONFIG_H
 #define HUD_CONFIG_H
 
+/* Внутренняя версия прошивки: major.minor.fix. */
+#define HUD_FW_VERSION_MAJOR  29
+#define HUD_FW_VERSION_MINOR  1
+#define HUD_FW_VERSION_FIX    3
+#define HUD_FW_VERSION_STRING "29.1.3"
+
 /* ---- Источник данных ----
    HUD_SRC_BLE  — сырые CAN-кадры от сниффера / BLE-гейта по BLE (протокол ACL)
    HUD_SRC_TWAI — свой трансивер TJA1051T/3 прямо на шине I-CAN,

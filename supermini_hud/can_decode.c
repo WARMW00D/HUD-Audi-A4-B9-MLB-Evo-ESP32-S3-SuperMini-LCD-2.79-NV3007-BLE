@@ -130,11 +130,11 @@ static void decode_lka(const uint8_t *d)
     s_data.lka_line_l = ll;
     s_data.lka_line_r = lr;
     s_data.lka_warn   = warn;
-    /* Лог 29.09 (стоянка): при включении LKA индикаторы 61/62 НЕ меняются,
-       а линии переходят 0 -> 1 ("не видна"). Поэтому "включён" = любая
-       линия не 0; индикаторы уточняют состояние, когда они есть. */
+    /* На движении по replay общий green/yellow-флаг остаётся 0, а состояние
+       передаётся Lernmodus: 2 = линия видна и ассистент держит, 1 = линия
+       не распознана. Поэтому две видимые линии также означают ACTIVE. */
     s_data.lka_state  = warn   ? LKA_INTERVENE :
-                        green  ? LKA_ACTIVE    :
+                        (green || ll == 2 || lr == 2) ? LKA_ACTIVE :
                         (yellow || ll || lr) ? LKA_PASSIVE : LKA_OFF;
 }
 
@@ -528,6 +528,13 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
         s_data.sign_raw3     = sig(d, 27, 8);
         s_data.sign_sup2     = sig(d, 10, 1);
         s_data.sign_sup3     = sig(d, 9, 1);
+        touch(S_SIGN);
+        break;
+    case 0x29C: /* VZE_02: знаки 4/5 из K-Matrix MLB-Evo */
+        s_data.sign_raw4 = sig(d, 11, 8);
+        s_data.sign_raw5 = sig(d, 19, 8);
+        s_data.sign_sup4 = sig(d, 63, 1);
+        s_data.sign_sup5 = sig(d, 8, 1);
         touch(S_SIGN);
         break;
     case 0x397: /* LDW_02 */

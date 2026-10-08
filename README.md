@@ -130,6 +130,13 @@ Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled applic
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 
+
+### Optional photoresistor light sensor
+
+The SuperMini can use an optional photoresistor divider on **GPIO10 (ADC1)** when RLS_01 light data is unavailable. Connect the LDR from 3V3 to GPIO10, a 10 kΩ resistor from GPIO10 to GND, and optionally 100 nF from GPIO10 to GND. Calibration is available in the Android app: close the sensor and save the dark point once, then illuminate it with a bright flashlight and save the bright point once.
+
+![Photoresistor divider](schematics/HUD_light_sensor_divider_supermini_en.svg)
+
 ## Android settings and BLE OTA
 
 1. Download the APK above or build and install the [Android app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).

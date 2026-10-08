@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "hud_overspeed.h"
+#include "hud_light.h"
 #include "hud_config.h"
 #include "user_config.h"
 #include "hud_mockup.h"
@@ -294,12 +295,17 @@ static const NavImg *nav_pick(const NavSet *set, uint8_t main, uint8_t dir)
    верхняя граница диапазона по RLS_Vorfeldhelligkeit_Boost (0 — ярче 24413) */
 static int light_lux(const HudData *d)
 {
+    /* Poll the optional ADC1 photoresistor from the LVGL task. RLS_01 has priority. */
+    hud_light_poll();
     static const uint16_t boost_lux[16] = { 30000, 24413, 22193, 20176, 18342, 16647, 15158, 13780,
                                             12527, 11388, 10353, 9412, 8556, 7778, 7071, 6428 };
     if ((d->valid & V_RLS) && d->rls_fw <= 1021) {
         if (d->rls_fw >= 1020 && d->rls_boost <= 15) return boost_lux[d->rls_boost];
         return d->rls_fw * 6;
     }
+    /* Optional photoresistor is the fallback when RLS_01 is absent. */
+    int ldr = hud_light_lux();
+    if (ldr >= 0) return ldr;
     /* датчика нет — оценка по авто-яркости дисплеев (0 лк -> ~99, 6000 лк -> 253) */
     if ((d->valid & V_DIM) && d->dim_raw <= 253)
         return d->dim_raw <= 99 ? 0 : (d->dim_raw - 99) * 6000 / 154;

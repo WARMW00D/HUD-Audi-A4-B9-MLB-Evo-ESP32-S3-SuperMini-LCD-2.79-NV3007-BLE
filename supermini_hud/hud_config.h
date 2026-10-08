@@ -77,6 +77,15 @@
 #define HUD_BRIGHT_NO_DATA    170    /* пока нет данных о яркости (и без связи)       */
 #define HUD_BRIGHT_STEP       4      /* плавность: шаг изменения за 50 мс             */
 
+/* ---- Опциональный датчик света: фоторезистор на ADC1 GPIO10 ----
+   Фоторезистор подключается к 3V3 и GPIO10, резистор 10 кОм — от GPIO10 к GND,
+   конденсатор 100 нФ — GPIO10 к GND. Используется только без свежего RLS_01. */
+#define HUD_LDR_PIN           10
+#define HUD_LDR_ON            0
+#define HUD_LDR_DARK_MV       150
+#define HUD_LDR_BRIGHT_MV     2500
+#define HUD_LDR_MIN_SPAN_MV   300
+
 /* ---- Язык и единицы ----
    Настройки задаются здесь и применяются при каждой загрузке. */
 #define HUD_LANG_RU    0

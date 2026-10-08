@@ -130,6 +130,12 @@ CAN CTX/TXD → 10 кΩ → 3V3 платы; S → VIO для silent mode. CAN-H 
 
 Для защищённого шлюза скопировать `secrets.example.h` в `secrets.h` и задать тот же `BLE_PASSKEY`, что на шлюзе. `secrets.h` исключён из Git. PIN телефона `HUD_SETTINGS_PIN` в `user_config.h` — отдельный код.
 
+## Опциональный датчик света
+
+SuperMini может использовать фоторезисторный делитель на **GPIO10 (ADC1)**, если нет данных освещённости RLS_01. Подключите фоторезистор от 3V3 к GPIO10, резистор 10 кОм от GPIO10 к GND и при необходимости конденсатор 100 нФ от GPIO10 к GND. Калибровка выполняется в Android: полностью закройте сенсор и один раз сохраните точку «темно», затем посветите ярким фонариком и один раз сохраните точку «ярко».
+
+![Делитель фоторезистора](schematics/HUD_light_sensor_divider_supermini_ru.svg)
+
 ## Настройки Android и BLE OTA
 
 1. Скачать APK выше либо собрать и установить [Android-приложение](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App).

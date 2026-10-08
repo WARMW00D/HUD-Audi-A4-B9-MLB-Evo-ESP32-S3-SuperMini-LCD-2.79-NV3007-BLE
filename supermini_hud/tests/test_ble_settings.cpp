@@ -12,6 +12,13 @@ extern "C" void hud_set_gallons(bool b){live[4]=b;}
 extern "C" void hud_set_tank_l(uint8_t v){live[5]=v;}
 extern "C" void hud_set_accel_bar(bool b){live[6]=b;}
 extern "C" void hud_set_overspeed_tol(uint8_t v){live[7]=v;}
+static bool test_light_enabled; static int test_dark_mv = 150, test_bright_mv = 2500, test_sample_mv = 1200;
+extern "C" bool hud_light_enabled(void){return test_light_enabled;}
+extern "C" void hud_light_set_enabled(bool on){test_light_enabled=on;}
+extern "C" void hud_light_get_cal(int *d,int *b){*d=test_dark_mv;*b=test_bright_mv;}
+extern "C" void hud_light_set_cal(int d,int b){test_dark_mv=d;test_bright_mv=b;}
+extern "C" void hud_light_sample_now(void){}
+extern "C" int hud_light_mv(void){return test_sample_mv;}
 static void connect(NimBLEConnInfo &c){server->cb->onConnect(server,c);}
 static void auth(NimBLEConnInfo &c){server->cb->onAuthenticationComplete(c);}
 static void write(unsigned i,uint8_t v,NimBLEConnInfo&c){chars[i]->setValue(&v,1);chars[i]->cb->onWrite(chars[i],c);}
@@ -26,6 +33,7 @@ int main(){
  a.bonded=a.encrypted=a.authenticated=true;NimBLEDevice::bonds.insert(a.id.toString());auth(a);assert(state.owned);
  for(unsigned i=0;i<5;i++){write(i,1,a);assert(live[i]==1);write(i,0,a);assert(live[i]==0);}
  assert(live[7]==20);for(uint8_t tol : {0,1,20,100}){write(7,tol,a);assert(live[7]==tol);}
+ write(8,1,a); assert(test_light_enabled); write(9,1,a); assert(test_dark_mv==test_sample_mv); write(10,1,a); assert(test_bright_mv==test_sample_mv);
  write(7,101,a);write(7,255,a);assert(live[7]==100);
  prefs.fail=true;write(7,10,a);assert(live[7]==100);prefs.fail=false;write(7,35,a);
  for(uint8_t capacity : {1,54,63,128,200}) {write(5,capacity,a);assert(live[5]==capacity);}

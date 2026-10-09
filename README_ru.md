@@ -106,6 +106,21 @@ CAN CTX/TXD → 10 кΩ → 3V3 платы; S → VIO для silent mode. CAN-H 
 
 Это схема соединений, не разводка PCB и не полная схема автомобильной защиты питания. Развязка USB-питания не показана; учитывайте её при прошивке с подключённым внешним 5V.
 
+## Корпус для 3D-печати
+
+В папке [`case/`](case/) находится проект корпуса из ASA для дисплея NV3007 2.79″: верхняя часть с козырьком и нижняя пластина, закрепляемая винтами снизу.
+
+![Превью корпуса SuperMini HUD](case/supermini_hud_preview.png)
+
+| Деталь | STL для печати | STEP для CAD |
+|---|---|---|
+| Верхняя часть с козырьком | [STL](case/supermini_hud_shell.stl) | [STEP](case/supermini_hud_shell.step) |
+| Нижняя пластина с ножками | [STL](case/supermini_hud_plate.stl) | [STEP](case/supermini_hud_plate.step) |
+| Нижняя пластина без ножек | [STL](case/supermini_hud_plate_nofeet.stl) | [STEP](case/supermini_hud_plate_nofeet.step) |
+| Отдельные ножки | [STL](case/supermini_hud_feet.stl) | [STEP](case/supermini_hud_feet.step) |
+
+[Параметрический исходник OpenSCAD](case/supermini_hud.scad). Размеры заданы в миллиметрах. Параметр `PART` выбирает `assembly`, `shell`, `plate`, `plate_nofeet` или `feet`. Модель рассчитана на **ASA**.
+
 ## Сборка и первая установка через USB
 
 Открыть `supermini_hud/supermini_hud.ino` в Arduino IDE. Имя папки скетча должно остаться `supermini_hud`.
@@ -193,6 +208,7 @@ g++ -std=c++17 -Wno-deprecated-declarations -Itests/settings_stubs tests/test_bl
 
 ## Структура файлов
 
+- `case/` — модели корпуса STL/STEP, параметрический исходник OpenSCAD и превью.
 - `supermini_hud/` — скетч Arduino, декодер, интерфейс LVGL, SPI-драйвер, BLE-клиент шлюза, настройки телефона и OTA-сервер.
 - `supermini_hud/config/` — пример конфигурации LVGL.
 - `supermini_hud/tests/` — host-тесты и заглушки.

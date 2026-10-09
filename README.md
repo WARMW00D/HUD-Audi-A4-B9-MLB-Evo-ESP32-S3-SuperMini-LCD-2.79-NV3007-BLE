@@ -106,6 +106,21 @@ CAN CTX/TXD → 10 kΩ → board 3V3; S → VIO for silent mode. CAN-H / CAN-L a
 
 The drawing is a wiring diagram, not a PCB layout or a complete automotive power-protection design. USB power isolation is not drawn; account for it when flashing while external 5 V is connected.
 
+## 3D-printed enclosure
+
+The [`case/`](case/) folder contains an ASA enclosure for the NV3007 2.79″ display: a top shell with a visor and a bottom plate secured with screws from below.
+
+![SuperMini HUD enclosure preview](case/supermini_hud_preview.png)
+
+| Part | STL for printing | STEP for CAD |
+|---|---|---|
+| Top shell with visor | [STL](case/supermini_hud_shell.stl) | [STEP](case/supermini_hud_shell.step) |
+| Bottom plate with feet | [STL](case/supermini_hud_plate.stl) | [STEP](case/supermini_hud_plate.step) |
+| Bottom plate without feet | [STL](case/supermini_hud_plate_nofeet.stl) | [STEP](case/supermini_hud_plate_nofeet.step) |
+| Separate feet | [STL](case/supermini_hud_feet.stl) | [STEP](case/supermini_hud_feet.step) |
+
+[Parametric OpenSCAD source](case/supermini_hud.scad). Dimensions are in millimetres. Use `PART` to select `assembly`, `shell`, `plate`, `plate_nofeet` or `feet`. The model is designed for **ASA**.
+
 ## Build and first USB installation
 
 Open `supermini_hud/supermini_hud.ino` in Arduino IDE. Keep the sketch-folder name `supermini_hud`.
@@ -194,6 +209,7 @@ CAN signal verification depends on the vehicle and equipment. The inherited obse
 
 ## Files
 
+- `case/` — enclosure models (STL/STEP), parametric OpenSCAD source and preview.
 - `supermini_hud/` — Arduino sketch, decoder, LVGL interface, SPI port, BLE gateway client, phone settings and OTA server.
 - `supermini_hud/config/` — LVGL configuration example.
 - `supermini_hud/tests/` — host tests and stubs.

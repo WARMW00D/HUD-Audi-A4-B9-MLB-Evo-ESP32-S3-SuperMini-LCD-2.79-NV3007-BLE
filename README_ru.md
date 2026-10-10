@@ -3,7 +3,15 @@
 
 
 
+
+
+
+
 [English](README.md) · [Приложение Android](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
+
+
+
+
 
 
 
@@ -13,7 +21,15 @@
 
 
 
+
+
+
+
 **Проверенная конфигурация автомобиля:** работа устройства проверялась на **Audi A4 B9 рестайлинг (facelift) с магнитолой MIB3 High**.
+
+
+
+
 
 
 
@@ -23,12 +39,24 @@
 
 
 
+
+
+
+
 ## Объём бака, бар ускорения и толерантность
 
 
 
 
+
+
+
+
 Версии исходников: **прошивка HUD v29.1.9 / приложение Android 1.4.1 (versionCode 5)**.
+
+
+
+
 
 
 
@@ -41,7 +69,15 @@
 
 
 
+
+
+
+
 Для новых настроек нужны **приложение 1.4.1 + прошивка v29.1.9**. Приложение 1.4.1 работает и со старой прошивкой: отсутствующие настройки отключены. Готовые APK 1.4.1 и app-BIN v29.1.9 от WARMW00D опубликованы в Releases; целостность проверена. Если уже установлена v29.0 с OTA-разделами, v29.1.9 использует ту же разметку; для более ранних прошивок сначала нужен переход через USB по инструкции ниже.
+
+
+
+
 
 
 
@@ -51,40 +87,17 @@
 
 
 
+
+
+
+
 ![HUD ESP32-S3 SuperMini на дисплее NV3007 2.79″](docs/images/hud-supermini-nv3007.jpg)
 
 
 
 
+
+
+
+
 Фото от WARMW00D: скорость, передача, ограничение скорости, навигация и информация о топливе на дисплее NV3007.
-
-
-
-
-## Скачать прошивку BIN
-
-
-
-
-[Релиз v29.1.9](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v29.1.9) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v29.1.9/HUD-SuperMini-v29.1.9-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v29.1.9/SHA256SUMS.txt).
-
-
-
-
-Образ от WARMW00D, **1 149 616 байт**. Проверены ESP32-S3-заголовок, контрольная сумма и SHA-256. **Только приложение для OTA**: bootloader и таблица разделов не включены. Первая установка — через USB с `partitions.csv` проекта; app-BIN не меняет разметку. Разметка v29.0 с двумя OTA-разделами совместима. Передача OTA на реальном железе здесь ещё не проверена.
-
-
-
-
-## Скачать APK Android
-
-
-
-
-[Версия 1.3](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release**, до проверки OTA на реальных устройствах.
-
-
-
-
-- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-release.apk) — обычная установка, 58.4 KB.
-- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-debug.apk) — 66.5 KB; `testOnly=true`: `adb install -r -t HUD-Control-1.4.1-debug.apk`.

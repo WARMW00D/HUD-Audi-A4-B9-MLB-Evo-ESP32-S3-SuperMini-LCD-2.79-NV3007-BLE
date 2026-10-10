@@ -6,6 +6,7 @@
 #include "freertos/semphr.h"
 #include "hud_ble_ota.h"
 #include "hud_ota_core.h"
+#include "hud_mockup.h"
 
 static const char *OTA_SERVICE="74d0a200-3d92-4f50-9b1a-478142000001";
 static const char *OTA_CONTROL="74d0a200-3d92-4f50-9b1a-478142000002";
@@ -82,6 +83,20 @@ static HudOtaAuthorize authorize;
 static uint16_t session_handle=BLE_HS_CONN_HANDLE_NONE;
 static uint32_t last_activity, committed_since;
 static bool restart_pending;
+static bool fast_link;
+
+static void sync_link_speed(uint8_t state) {
+    if (!ota_server || session_handle == BLE_HS_CONN_HANDLE_NONE) return;
+    const bool want_fast = state == uint8_t(HudOtaState::Receiving) ||
+                           state == uint8_t(HudOtaState::Verified);
+    if (want_fast == fast_link) return;
+    /* BLE intervals are in 1.25 ms units: 7.5..15 ms for OTA,
+       30..60 ms for normal operation. */
+    ota_server->updateConnParams(session_handle, want_fast ? 6 : 24,
+                                 want_fast ? 12 : 48, 0, 400);
+    fast_link = want_fast;
+    Serial.printf("[ota] BLE connection interval: %s\n", want_fast ? "fast" : "normal");
+}
 struct OtaLock {
     OtaLock(){xSemaphoreTake(ota_mutex,portMAX_DELAY);}
     ~OtaLock(){xSemaphoreGive(ota_mutex);}
@@ -92,6 +107,8 @@ static bool allowed(NimBLEConnInfo &ci) {
 }
 static void publish() {
     uint8_t status[16]; core.status(status); control_char->setValue(status,sizeof(status));
+    hud_ota_ui_status(status[1], HudOtaCore::get32(status + 4), HudOtaCore::get32(status + 8));
+    sync_link_speed(status[1]);
 }
 class ControlCallbacks : public NimBLECharacteristicCallbacks {
     void onRead(NimBLECharacteristic *,NimBLEConnInfo &ci) override {
@@ -137,7 +154,12 @@ void hud_ble_ota_disconnect(uint16_t handle) {
     if (!ota_mutex) return;
     OtaLock lock;
     if (session_handle==handle) {
-        core.cancel(); session_handle=BLE_HS_CONN_HANDLE_NONE; publish();
+        core.cancel();
+        if (fast_link) {
+            ota_server->updateConnParams(handle, 24, 48, 0, 400);
+            fast_link = false;
+        }
+        session_handle=BLE_HS_CONN_HANDLE_NONE; publish();
         // A committed image must still reboot if Android misses the final reply.
     }
 }

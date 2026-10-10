@@ -115,6 +115,7 @@ The [`case/`](case/) folder contains an ASA enclosure for the NV3007 2.79″ dis
 | Part | STL for printing | STEP for CAD |
 |---|---|---|
 | Top shell with visor | [STL](case/supermini_hud_shell.stl) | [STEP](case/supermini_hud_shell.step) |
+| Top shell with long visor, variant 2 | [STL](case/supermini_hud_shell_var2.stl) | [STEP](case/supermini_hud_shell_var2.step) |
 | Bottom plate with feet | [STL](case/supermini_hud_plate.stl) | [STEP](case/supermini_hud_plate.step) |
 | Bottom plate without feet | [STL](case/supermini_hud_plate_nofeet.stl) | [STEP](case/supermini_hud_plate_nofeet.step) |
 | Separate feet | [STL](case/supermini_hud_feet.stl) | [STEP](case/supermini_hud_feet.step) |

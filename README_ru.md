@@ -115,6 +115,7 @@ CAN CTX/TXD → 10 кΩ → 3V3 платы; S → VIO для silent mode. CAN-H 
 | Деталь | STL для печати | STEP для CAD |
 |---|---|---|
 | Верхняя часть с козырьком | [STL](case/supermini_hud_shell.stl) | [STEP](case/supermini_hud_shell.step) |
+| Верхняя часть с длинным козырьком, вариант 2 | [STL](case/supermini_hud_shell_var2.stl) | [STEP](case/supermini_hud_shell_var2.step) |
 | Нижняя пластина с ножками | [STL](case/supermini_hud_plate.stl) | [STEP](case/supermini_hud_plate.step) |
 | Нижняя пластина без ножек | [STL](case/supermini_hud_plate_nofeet.stl) | [STEP](case/supermini_hud_plate_nofeet.step) |
 | Отдельные ножки | [STL](case/supermini_hud_feet.stl) | [STEP](case/supermini_hud_feet.step) |

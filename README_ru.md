@@ -92,12 +92,12 @@ LVGL рисует компактный холст 518 × 172, равномерн
 
 | ESP32-S3 | Подключение |
 |---|---|
-| GPIO4 | LCD SCL / SPI SCK |
-| GPIO5 | LCD SDA / SPI MOSI |
-| GPIO2 | LCD CS |
-| GPIO7 | LCD DC |
-| GPIO6 | LCD RES |
-| GPIO1 | LCD BL / PWM |
+| GPIO1 | LCD SCL / SPI SCK |
+| GPIO2 | LCD SDA / SPI MOSI |
+| GPIO5 | LCD CS |
+| GPIO4 | LCD DC |
+| GPIO3 | LCD RES |
+| GPIO6 | LCD BL / PWM |
 | GPIO8 | CAN CRX / RXD |
 | GPIO9 | Резерв TWAI TX — физически не подключать |
 | GPIO0 | Встроенная кнопка BOOT |

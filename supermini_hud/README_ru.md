@@ -58,12 +58,12 @@ BLE OTA через Android HUD Control 1.2. Первую установку вы
 |---|---|---|
 | GND | GND | общая земля |
 | VDD | 3V3_D выхода DC-DC 5 → 3,3 В | согласно приложенному описанию, VDD допускает 3–5 V |
-| SCL | GPIO1 | HUD_LCD_SCK |
-| SDA | GPIO2 | HUD_LCD_MOSI |
-| RES | GPIO3 | HUD_LCD_RST |
-| DC | GPIO4 | HUD_LCD_DC |
-| CS | GPIO5 | HUD_LCD_CS |
-| BL | управление от GPIO6 | EXAMPLE_PIN_NUM_BK_LIGHT |
+| SCL | GPIO4 | HUD_LCD_SCK |
+| SDA | GPIO5 | HUD_LCD_MOSI |
+| RES | GPIO6 | HUD_LCD_RST |
+| DC | GPIO7 | HUD_LCD_DC |
+| CS | GPIO2 | HUD_LCD_CS |
+| BL | управление от GPIO1 | EXAMPLE_PIN_NUM_BK_LIGHT |
 
 Сигналы управления — 3.3 V. MISO не используется.
 **BL:** в описании указан ток светодиодов 100 mA, но полная схема модуля

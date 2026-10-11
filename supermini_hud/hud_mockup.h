@@ -10,8 +10,7 @@ extern "C" {
    Вызывается из lvgl_port_init() под мьютексом LVGL. */
 void build_hud_mockup(void);
 
-/* OTA status callback; invoked from the BLE task. The display update is
-   intentionally deferred to the LVGL task in this test build. */
+/* BLE OTA status; safe to call from the BLE task. */
 void hud_ota_ui_status(uint8_t state, uint32_t received, uint32_t total);
 
 /* Язык и единицы во время работы (HUD_LANG_* / HUD_UNITS_* из hud_config.h).

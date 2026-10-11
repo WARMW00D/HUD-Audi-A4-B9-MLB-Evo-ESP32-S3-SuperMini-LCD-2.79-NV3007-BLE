@@ -9,6 +9,8 @@
 #include "lvgl_port.h"
 #include "hud_mockup.h"
 #include "user_config.h"
+#include "src/display/hud_scale.h"
+#include "src/display/hud_dirty.h"
 
 #if LVGL_VERSION_MAJOR != 8
 #error "This project requires LVGL 8.x (8.4.0 recommended)."
@@ -25,23 +27,29 @@ static Arduino_HWSPI bus(HUD_LCD_DC, HUD_LCD_CS, HUD_LCD_SCK, HUD_LCD_MOSI, -1);
 static Arduino_NV3007 panel(&bus, HUD_LCD_RST, HUD_LCD_ROTATION, false,
     142, 428, HUD_LCD_COL_OFFSET_1, 0, HUD_LCD_COL_OFFSET_2, 0,
     nv3007_279_init_operations, sizeof(nv3007_279_init_operations));
-/* One small internal-RAM buffer; SPI is blocking, so LVGL can reuse it
-   only after lv_disp_flush_ready(). Partial areas are tightly packed. */
+static uint16_t *stripe;
+static uint16_t *last_frame;
+static bool frame_valid;
+
 static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *pixels)
 {
-    const int w = area->x2 - area->x1 + 1;
-    const int h = area->y2 - area->y1 + 1;
-    assert(area->x1 >= 0 && area->y1 >= 0 && area->x2 < HUD_PANEL_W && area->y2 < HUD_PANEL_H);
-    assert(w * h <= HUD_PANEL_W * HUD_STRIPE_H);
-#if LV_COLOR_16_SWAP
-    /* Arduino_GFX expects native RGB565, independent of LVGL byte order. */
-    for (int i = 0; i < w * h; ++i) {
-        uint16_t c = pixels[i].full;
-        pixels[i].full = (c >> 8) | (c << 8);
+    /* full_refresh=1 guarantees a complete tightly packed canvas. The single
+       LVGL buffer remains owned by this callback until the blocking SPI ends. */
+    assert(area->x1 == 0 && area->y1 == 0 &&
+           area->x2 == HUD_CANVAS_W - 1 && area->y2 == HUD_CANVAS_H - 1);
+    for (int y = 0; y < HUD_VIEW_H; y += HUD_STRIPE_H) {
+        int n = min(HUD_STRIPE_H, HUD_VIEW_H - y);
+        for (int row = 0; row < n; ++row)
+            hud_scale_row_ordered(reinterpret_cast<const uint16_t *>(pixels), HUD_CANVAS_W,
+                HUD_CANVAS_H, stripe + row * HUD_PANEL_W, HUD_PANEL_W, HUD_VIEW_H, y + row, LV_COLOR_16_SWAP != 0);
+        hud_dirty_rect_t changed;
+        if (hud_dirty_pack(stripe, last_frame + y * HUD_PANEL_W,
+                           HUD_PANEL_W, n, !frame_valid, &changed)) {
+            panel.draw16bitRGBBitmap(changed.x, HUD_VIEW_Y + y + changed.y,
+                                    stripe, changed.w, changed.h);
+        }
     }
-#endif
-    panel.draw16bitRGBBitmap(area->x1, HUD_VIEW_Y + area->y1,
-                            reinterpret_cast<uint16_t *>(pixels), w, h);
+    frame_valid = true;
     lv_disp_flush_ready(drv);
 }
 
@@ -78,16 +86,19 @@ void lvgl_port_init(void)
     static lv_disp_draw_buf_t draw_buf;
     static lv_disp_drv_t drv;
     lv_color_t *canvas = static_cast<lv_color_t *>(heap_caps_malloc(
-        HUD_PANEL_W * HUD_STRIPE_H * sizeof(lv_color_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-    if (!canvas) { Serial.println("ERROR: partial display buffer allocation failed."); abort(); }
-    lv_disp_draw_buf_init(&draw_buf, canvas, nullptr, HUD_PANEL_W * HUD_STRIPE_H);
+        HUD_CANVAS_W * HUD_CANVAS_H * sizeof(lv_color_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    stripe = static_cast<uint16_t *>(heap_caps_malloc(
+        HUD_PANEL_W * HUD_STRIPE_H * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    last_frame = static_cast<uint16_t *>(heap_caps_malloc(
+        HUD_PANEL_W * HUD_VIEW_H * sizeof(uint16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (!canvas || !stripe || !last_frame) { Serial.println("ERROR: display buffer allocation failed."); abort(); }
+    lv_disp_draw_buf_init(&draw_buf, canvas, nullptr, HUD_CANVAS_W * HUD_CANVAS_H);
     lv_disp_drv_init(&drv);
     drv.hor_res = HUD_CANVAS_W;
     drv.ver_res = HUD_CANVAS_H;
     drv.draw_buf = &draw_buf;
     drv.flush_cb = flush_cb;
-    drv.full_refresh = 0;
-    drv.direct_mode = 0;
+    drv.full_refresh = 1;
     lv_disp_drv_register(&drv);
     /* Finish all UI construction before giving ownership to the LVGL task. */
     build_hud_mockup();
@@ -98,6 +109,6 @@ void lvgl_port_init(void)
     ESP_ERROR_CHECK(esp_timer_create(&args, &tick));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick, EXAMPLE_LVGL_TICK_PERIOD_MS * 1000));
     if (xTaskCreatePinnedToCore(lvgl_task, "LVGL", 6144, nullptr, 4, nullptr, 0) != pdPASS) abort();
-    Serial.printf("Display native/partial: %dx%d, view %dx%d, PSRAM free=%u\n",
+    Serial.printf("Display: %dx%d, view %dx%d, PSRAM free=%u\n",
         HUD_PANEL_W, HUD_PANEL_H, HUD_PANEL_W, HUD_VIEW_H, (unsigned)ESP.getFreePsram());
 }

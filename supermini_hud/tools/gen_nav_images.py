@@ -15,7 +15,7 @@ Direction: 0x00 прямо, 0x40 налево, 0x80 назад, 0xC0 напра�
 Выход: hud_nav_images.c / hud_nav_images.h + tools/preview_nav.png
 """
 import math, os
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageChops, ImageFilter
 
 S = 8
 W, H = 192, 116                 # область стрелки (ниже — строка дистанции)
@@ -25,7 +25,29 @@ ARROW_W = 15                    # толщина стрелки
 HEAD_W, HEAD_L = 36, 22         # наконечник
 ROAD_W = 22                     # дорога-контекст
 ROAD_A = 70                     # яркость дороги
+ARROW_A = 255
+ROAD_FILL = 100
+ROAD_BORDER = 2
+SKIP = 1
+CUT_A = 0
+SHADOW = 3
+SHADOW_K = 0.6
 CX, JY, BY = W / 2, 60, H - 4   # центр, перекрёсток, низ
+
+
+class SD(ImageDraw.ImageDraw):
+    """Пропускает стрелочные фигуры при построении дорожного слоя."""
+    def _skip(self, k): return k.get("fill") == SKIP
+    def line(self, *a, **k):
+        if not self._skip(k): super().line(*a, **k)
+    def ellipse(self, *a, **k):
+        if not self._skip(k): super().ellipse(*a, **k)
+    def polygon(self, *a, **k):
+        if not self._skip(k): super().polygon(*a, **k)
+    def rectangle(self, *a, **k):
+        if not self._skip(k): super().rectangle(*a, **k)
+    def arc(self, *a, **k):
+        if not self._skip(k): super().arc(*a, **k)
 
 def cv():
     return Image.new("L", (W * S, H * S), 0)
@@ -38,13 +60,15 @@ def vec(angle_deg):
     a = math.radians(angle_deg)
     return -math.sin(a), -math.cos(a)
 
-def line(d, pts, w, fill=255):
+def line(d, pts, w, fill=None):
+    if fill is None: fill = ARROW_A
     d.line(P(pts), fill=fill, width=int(w * S), joint="curve")
     for x, y in (pts[0], pts[-1]):
         r = w / 2
         d.ellipse([(x - r) * S, (y - r) * S, (x + r) * S, (y + r) * S], fill=fill)
 
-def head(d, tip, v, fill=255):
+def head(d, tip, v, fill=None):
+    if fill is None: fill = ARROW_A
     vx, vy = v
     nx, ny = -vy, vx
     bx, by = tip[0] - vx * HEAD_L, tip[1] - vy * HEAD_L
@@ -56,12 +80,12 @@ def arrow_path(d, pts):
     L = math.hypot(x2 - x1, y2 - y1)
     v = ((x2 - x1) / L, (y2 - y1) / L)
     body_end = (x2 - v[0] * (HEAD_L - 2), y2 - v[1] * (HEAD_L - 2))
-    d.line(P(pts[:-1] + [body_end]), fill=255, width=int(ARROW_W * S), joint="curve")
+    d.line(P(pts[:-1] + [body_end]), fill=ARROW_A, width=int(ARROW_W * S), joint="curve")
     r = ARROW_W / 2
     x0, y0 = pts[0]
-    d.ellipse([(x0 - r) * S, (y0 - r) * S, (x0 + r) * S, (y0 + r) * S], fill=255)
+    d.ellipse([(x0 - r) * S, (y0 - r) * S, (x0 + r) * S, (y0 + r) * S], fill=ARROW_A)
     for (px, py) in pts[1:-1]:
-        d.ellipse([(px - r) * S, (py - r) * S, (px + r) * S, (py + r) * S], fill=255)
+        d.ellipse([(px - r) * S, (py - r) * S, (px + r) * S, (py + r) * S], fill=ARROW_A)
     head(d, pts[-1], v)
 
 def fit_len(ox, oy, v, margin=4):
@@ -76,7 +100,7 @@ def fit_len(ox, oy, v, margin=4):
 # ------------------------------------------------------------------ манёвры ---
 def img_turn(sector):
     ang = sector * 22.5
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     v = vec(ang)
     # дорога: прямо через перекрёсток + выбранное направление
     line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A)
@@ -103,7 +127,7 @@ def img_turn(sector):
     return im
 
 def img_uturn(left=True):
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     s = -1 if left else 1
     R = 20
     top = 30
@@ -111,25 +135,25 @@ def img_uturn(left=True):
     line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A)
     line(d, [(x2, BY + 6), (x2, 4)], ROAD_W, ROAD_A)
     # стойка вверх, дуга, вниз
-    d.line(P([(CX, BY), (CX, top + R)]), fill=255, width=int(ARROW_W * S))
+    d.line(P([(CX, BY), (CX, top + R)]), fill=ARROW_A, width=int(ARROW_W * S))
     r = ARROW_W / 2
-    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=255)
+    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=ARROW_A)
     cx = CX + s * R
     box = [(cx - R - ARROW_W / 2) * S, (top - ARROW_W / 2) * S, (cx + R + ARROW_W / 2) * S, (top + 2 * R + ARROW_W / 2) * S]
-    d.ellipse(box, fill=255)
+    d.ellipse(box, fill=ARROW_A)
     inner = [(cx - R + ARROW_W / 2) * S, (top + ARROW_W / 2) * S, (cx + R - ARROW_W / 2) * S, (top + 2 * R - ARROW_W / 2) * S]
-    d.ellipse(inner, fill=0)
-    d.rectangle([(cx - R - ARROW_W) * S, (top + R) * S, (cx + R + ARROW_W) * S, (top + 2 * R + ARROW_W) * S], fill=0)
-    d.line(P([(CX, top + R), (CX, BY)]), fill=255, width=int(ARROW_W * S))
-    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=255)
+    d.ellipse(inner, fill=CUT_A)
+    d.rectangle([(cx - R - ARROW_W) * S, (top + R) * S, (cx + R + ARROW_W) * S, (top + 2 * R + ARROW_W) * S], fill=CUT_A)
+    d.line(P([(CX, top + R), (CX, BY)]), fill=ARROW_A, width=int(ARROW_W * S))
+    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=ARROW_A)
     tip_y = 86
-    d.line(P([(x2, top + R), (x2, tip_y - HEAD_L + 2)]), fill=255, width=int(ARROW_W * S))
+    d.line(P([(x2, top + R), (x2, tip_y - HEAD_L + 2)]), fill=ARROW_A, width=int(ARROW_W * S))
     head(d, (x2, tip_y), (0, 1))
     return im
 
 def img_roundabout(sector):
     ang = sector * 22.5
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     rc, R = (CX, 46), 29
     RW = 11                                   # толщина стрелки на кольце
     # все съезды серым: 4 основных луча + кольцо
@@ -144,9 +168,9 @@ def img_roundabout(sector):
     line(d, [ex0, (ex0[0] + v[0] * (Le + 6), ex0[1] + v[1] * (Le + 6))], ROAD_W, ROAD_A)
     # путь стрелки: въезд снизу, по кольцу против часовой (визуально), съезд
     entry = (CX, rc[1] + R)
-    d.line(P([(CX, BY), entry]), fill=255, width=int(ARROW_W * S))
+    d.line(P([(CX, BY), entry]), fill=ARROW_A, width=int(ARROW_W * S))
     r = ARROW_W / 2
-    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=255)
+    d.ellipse([(CX - r) * S, (BY - r) * S, (CX + r) * S, (BY + r) * S], fill=ARROW_A)
     # экранный угол PIL: 0 = вправо (3 ч), растёт по часовой. Въезд = 90 (6 ч).
     # Выход в точке по направлению ang: экранный угол = 270 - ang (против часовой => уменьшаем)
     start, end = 90, (270 - ang) % 360
@@ -156,19 +180,19 @@ def img_roundabout(sector):
     if ang % 360 == 180: span_start, span_end = -270, 90   # полный круг (разворот)
     box = [(rc[0] - R) * S, (rc[1] - R) * S, (rc[0] + R) * S, (rc[1] + R) * S]
     box = [(rc[0] - R - RW / 2) * S, (rc[1] - R - RW / 2) * S, (rc[0] + R + RW / 2) * S, (rc[1] + R + RW / 2) * S]
-    d.arc(box, span_start, span_end, fill=255, width=int(RW * S))
+    d.arc(box, span_start, span_end, fill=ARROW_A, width=int(RW * S))
     for a in (span_start, span_end):
         ar = math.radians(a)
         px, py = rc[0] + R * math.cos(ar), rc[1] + R * math.sin(ar)
-        d.ellipse([(px - RW / 2) * S, (py - RW / 2) * S, (px + RW / 2) * S, (py + RW / 2) * S], fill=255)
+        d.ellipse([(px - RW / 2) * S, (py - RW / 2) * S, (px + RW / 2) * S, (py + RW / 2) * S], fill=ARROW_A)
     tip = (ex0[0] + v[0] * Le, ex0[1] + v[1] * Le)
     body_end = (tip[0] - v[0] * (HEAD_L - 2), tip[1] - v[1] * (HEAD_L - 2))
-    d.line(P([ex0, body_end]), fill=255, width=int(ARROW_W * S))
+    d.line(P([ex0, body_end]), fill=ARROW_A, width=int(ARROW_W * S))
     head(d, tip, v)
     return im
 
 def img_exit(right=True):
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     s = 1 if right else -1
     xm = CX - s * 14
     line(d, [(xm, BY + 6), (xm, 4)], ROAD_W, ROAD_A)
@@ -178,7 +202,7 @@ def img_exit(right=True):
     return im
 
 def img_fork(right=True):
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     s = 1 if right else -1
     line(d, [(CX, BY + 6), (CX, 64), (CX - 36, 24), (CX - 44, 4)], ROAD_W, ROAD_A)
     line(d, [(CX, 64), (CX + 36, 24), (CX + 44, 4)], ROAD_W, ROAD_A)
@@ -189,11 +213,11 @@ def img_straight():
     return img_turn(0)
 
 def img_arrived():
-    im = cv(); d = ImageDraw.Draw(im)
+    im = cv(); d = SD(im)
     # метка-капля с отверстием
     cx, cy, r = CX, 42, 24
-    d.ellipse([(cx - r) * S, (cy - r) * S, (cx + r) * S, (cy + r) * S], fill=255)
-    d.polygon(P([(cx - r * 0.82, cy + r * 0.55), (cx + r * 0.82, cy + r * 0.55), (cx, cy + r + 30)]), fill=255)
+    d.ellipse([(cx - r) * S, (cy - r) * S, (cx + r) * S, (cy + r) * S], fill=ARROW_A)
+    d.polygon(P([(cx - r * 0.82, cy + r * 0.55), (cx + r * 0.82, cy + r * 0.55), (cx, cy + r + 30)]), fill=ARROW_A)
     ri = 9
     d.ellipse([(cx - ri) * S, (cy - ri) * S, (cx + ri) * S, (cy + ri) * S], fill=0)
     d.ellipse([(cx - 30) * S, (BY - 10) * S, (cx + 30) * S, (BY + 2) * S], outline=ROAD_A, width=3 * S)
@@ -206,6 +230,19 @@ def down(im):
 def crop(im):
     bb = im.getbbox()
     return (im.crop(bb), bb[0], bb[1]) if bb else (im, 0, 0)
+
+def road_layer(road, arrow):
+    q = 4
+    u = road.resize((W * q, H * q), Image.LANCZOS)
+    m = u.point(lambda v: 255 if v >= 40 else 0)
+    dil = m.filter(ImageFilter.MaxFilter(2 * ROAD_BORDER * q + 1))
+    border = ImageChops.subtract(dil, m)
+    fill = m.point(lambda v: ROAD_FILL if v else 0)
+    base = ImageChops.lighter(border, fill)
+    sh = arrow.resize((W * q, H * q), Image.LANCZOS)
+    sh = ImageChops.offset(sh, 0, SHADOW * q).filter(ImageFilter.GaussianBlur(1.2 * q))
+    shade = sh.point(lambda v: int(255 - SHADOW_K * v))
+    return ImageChops.multiply(base, shade).resize((W, H), Image.LANCZOS)
 
 def pack4(im):
     w, h = im.size
@@ -222,29 +259,41 @@ def pack4(im):
 SW, SH = 25, 15                 # маленькая стрелка "следующий манёвр" (1/5)
 
 def main():
-    global ROAD_A
-    imgs = []    # (name, im, x, y)
+    global ROAD_A, ARROW_A
+    imgs = []
+    roads = {}
 
-    def build(prefix, size, round_road=None):
-        global ROAD_A
-        def add(name, big):
+    def build(prefix, size, round_road=None, road_layers=False):
+        global ROAD_A, ARROW_A
+        def add(name, fn, *args, road=True):
+            global ROAD_A, ARROW_A, CUT_A
+            saved = ROAD_A
+            ARROW_A = 255
+            if road_layers:
+                ROAD_A = 0
+            big = fn(*args)
+            if road_layers and road:
+                ROAD_A = ROAD_FILL; ARROW_A = SKIP; CUT_A = SKIP
+                roads[prefix + name] = crop(road_layer(fn(*args), big).resize(size, Image.LANCZOS))
+            ROAD_A = saved; ARROW_A = 255; CUT_A = 0
             c, x, y = crop(big.resize(size, Image.LANCZOS))
             imgs.append((prefix + name, c, x, y))
-        for s_ in range(16): add(f"turn_{s_:02d}", img_turn(s_))
+        for s_ in range(16): add(f"turn_{s_:02d}", img_turn, s_)
         saved = ROAD_A
-        if round_road is not None: ROAD_A = round_road    # у маленьких колец серое кольцо оставляем
-        for s_ in range(16): add(f"round_{s_:02d}", img_roundabout(s_))
+        if round_road is not None: ROAD_A = round_road
+        for s_ in range(16): add(f"round_{s_:02d}", img_roundabout, s_)
         ROAD_A = saved
-        add("exit_l", img_exit(False)); add("exit_r", img_exit(True))
-        add("fork_l", img_fork(False)); add("fork_r", img_fork(True))
-        add("uturn_l", img_uturn(True)); add("uturn_r", img_uturn(False))
-        add("arrived", img_arrived())
+        add("exit_l", img_exit, False); add("exit_r", img_exit, True)
+        add("fork_l", img_fork, False); add("fork_r", img_fork, True)
+        add("uturn_l", img_uturn, True); add("uturn_r", img_uturn, False)
+        add("arrived", img_arrived, road=False)
 
-    build("nav_", (128, 77))
-    # Keep the distance label at its original baseline, center smaller arrows.
+    build("nav_", (128, 77), road_layers=True)
     imgs[:] = [(n, im, x, y + 19) for n, im, x, y in imgs]
+    # Road coordinates use the same vertical offset as the main images.
+    roads = {n: (im, x, y + 19) for n, (im, x, y) in roads.items()}
     road_saved = ROAD_A
-    ROAD_A = 0                      # у маленьких стрелок без серой дороги
+    ROAD_A = 0
     build("nav_s_", (SW, SH), round_road=110)
     ROAD_A = road_saved
 
@@ -252,18 +301,22 @@ def main():
     with open(os.path.join(OUT, "hud_nav_images.c"), "w") as f:
         f.write("/* Сгенерировано tools/gen_nav_images.py — не править вручную */\n")
         f.write('#define LV_LVGL_H_INCLUDE_SIMPLE\n#include "lvgl.h"\n#include "hud_nav_images.h"\n\n')
+        for n, (im, x, y) in roads.items():
+            name = "road_" + n; data = pack4(im); total += len(data)
+            rows = [", ".join(f"0x{b:02x}" for b in data[i:i + 24]) for i in range(0, len(data), 24)]
+            f.write(f"static const uint8_t {name}_map[] = {{\n    " + ",\n    ".join(rows) + "\n};\n")
+            f.write(f"static const lv_img_dsc_t img_{name} = {{\n    .header.cf = LV_IMG_CF_ALPHA_4BIT, .header.always_zero = 0, .header.reserved = 0,\n    .header.w = {im.width}, .header.h = {im.height}, .data_size = {len(data)}, .data = {name}_map,\n}};\n\n")
         for n, im, x, y in imgs:
             data = pack4(im); total += len(data)
             rows = [", ".join(f"0x{b:02x}" for b in data[i:i + 24]) for i in range(0, len(data), 24)]
             f.write(f"static const uint8_t {n}_map[] = {{\n    " + ",\n    ".join(rows) + "\n};\n")
-            f.write(f"static const lv_img_dsc_t img_{n} = {{\n    .header.cf = LV_IMG_CF_ALPHA_4BIT, .header.always_zero = 0, "
-                    f".header.reserved = 0,\n    .header.w = {im.width}, .header.h = {im.height}, "
-                    f".data_size = {len(data)}, .data = {n}_map,\n}};\n\n")
+            f.write(f"static const lv_img_dsc_t img_{n} = {{\n    .header.cf = LV_IMG_CF_ALPHA_4BIT, .header.always_zero = 0, .header.reserved = 0,\n    .header.w = {im.width}, .header.h = {im.height}, .data_size = {len(data)}, .data = {n}_map,\n}};\n\n")
         def tbl(name, keys):
             f.write(f"static const NavImg {name}[{len(keys)}] = {{\n")
             for k in keys:
                 n, im, x, y = next(t for t in imgs if t[0] == k)
-                f.write(f"    {{ &img_{n}, {x}, {y} }},\n")
+                r = roads.get(n)
+                f.write(f"    {{ &img_{n}, {x}, {y}, &img_road_{n}, {r[1]}, {r[2]} }},\n" if r else f"    {{ &img_{n}, {x}, {y}, NULL, 0, 0 }},\n")
             f.write("};\n")
         for pre in ("nav_", "nav_s_"):
             tbl(pre + "turn", [f"{pre}turn_{s_:02d}" for s_ in range(16)])
@@ -272,41 +325,10 @@ def main():
             tbl(pre + "fork", [pre + "fork_l", pre + "fork_r"])
             tbl(pre + "uturn", [pre + "uturn_l", pre + "uturn_r"])
             tbl(pre + "arrived", [pre + "arrived"])
-        f.write("\nconst NavSet nav_big   = { nav_turn,   nav_round,   nav_exit,   nav_fork,   nav_uturn,   nav_arrived   };\n")
+        f.write("\nconst NavSet nav_big = { nav_turn, nav_round, nav_exit, nav_fork, nav_uturn, nav_arrived };\n")
         f.write("const NavSet nav_small = { nav_s_turn, nav_s_round, nav_s_exit, nav_s_fork, nav_s_uturn, nav_s_arrived };\n")
-    with open(os.path.join(OUT, "hud_nav_images.h"), "w") as f:
-        f.write("/* Сгенерировано tools/gen_nav_images.py — не править вручную */\n"
-                "#ifndef HUD_NAV_IMAGES_H\n#define HUD_NAV_IMAGES_H\n#include \"lvgl.h\"\n\n"
-                f"#define NAV_AREA_W 128\n#define NAV_AREA_H {H}\n"
-                f"#define NAV_SMALL_W {SW}\n#define NAV_SMALL_H {SH}\n\n"
-                "typedef struct { const lv_img_dsc_t *img; int16_t x, y; } NavImg;   /* x,y — смещение в своей области */\n\n"
-                "/* Набор стрелок: turn[16] — сектор 0..15 (22.5 град, против часовой от 'прямо'),\n"
-                "   round[16] — кольцо, сектор съезда; exit/fork/uturn: [0] налево, [1] направо */\n"
-                "typedef struct {\n"
-                "    const NavImg *turn, *round, *exit, *fork, *uturn, *arrived;\n"
-                "} NavSet;\n\n"
-                "extern const NavSet nav_big;     /* основная стрелка, область NAV_AREA_W x NAV_AREA_H   */\n"
-                "extern const NavSet nav_small;   /* следующий манёвр, область NAV_SMALL_W x NAV_SMALL_H */\n\n#endif\n")
-
-    # превью: большие + маленькие
-    big = [t for t in imgs if not t[0].startswith("nav_s_")]
-    small = [t for t in imgs if t[0].startswith("nav_s_")]
-    cols = 8
-    rows_b = (len(big) + cols - 1) // cols
-    sheet = Image.new("RGB", (cols * (W + 6), rows_b * (H + 6) + 5 * (SH * 3 + 6)), (45, 45, 45))
-    for i, (n, im, x, y) in enumerate(big):
-        tile = Image.new("RGB", (W, H), (0, 0, 0))
-        tile.paste(Image.new("RGB", im.size, (235, 245, 255)), (x, y), im)
-        sheet.paste(tile, ((i % cols) * (W + 6), (i // cols) * (H + 6)))
-    y0 = rows_b * (H + 6)
-    cs = (cols * (W + 6)) // (SW * 3 + 6)
-    for i, (n, im, x, y) in enumerate(small):
-        tile = Image.new("RGB", (SW, SH), (0, 0, 0))
-        tile.paste(Image.new("RGB", im.size, (170, 170, 170)), (x, y), im)
-        tile = tile.resize((SW * 3, SH * 3), Image.NEAREST)
-        sheet.paste(tile, ((i % cs) * (SW * 3 + 6), y0 + (i // cs) * (SH * 3 + 6)))
-    sheet.save(os.path.join(OUT, "tools", "preview_nav.png"))
     print(f"стрелок {len(imgs)}, данных {total} байт")
+
 
 if __name__ == "__main__":
     main()

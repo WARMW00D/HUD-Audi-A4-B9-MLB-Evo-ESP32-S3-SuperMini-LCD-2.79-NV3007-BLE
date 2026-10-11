@@ -86,9 +86,9 @@ LVGL renders a compact 518 × 172 canvas, uniformly scales it to 428 × 142, and
 
 **Display VDD comes from the separate converter’s 3.3 V output (`3V3_D`). Do not connect that output to the board’s 3V3 pin (`3V3_P`).** All grounds are common. CAN-module VCC comes from the board’s 5V pin; VIO and S come from the board’s 3V3 pin. SN65HVD230 is not used.
 
-![HUD wiring, revision 3](schematics/HUD_supermini_NV3007_rev3_en.png)
+![HUD wiring, revision 3](schematics/HUD_supermini_NV3007_rev3_en_new_pins.png)
 
-[Editable SVG](schematics/HUD_supermini_NV3007_rev3_en.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_en.pdf)
+[Editable SVG](schematics/HUD_supermini_NV3007_rev3_en_new_pins.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_en_new_pins.pdf)
 
 | ESP32-S3 | Connection |
 |---|---|

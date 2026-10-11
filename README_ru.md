@@ -86,9 +86,9 @@ LVGL рисует компактный холст 518 × 172, равномерн
 
 **VDD дисплея получает 3,3 В от отдельного преобразователя (`3V3_D`). Его выход не соединяется с 3V3 платы (`3V3_P`).** Все GND общие. CAN VCC питается от 5V платы; VIO и S — от 3V3 платы. SN65HVD230 не используется.
 
-![Схема HUD, ревизия 3](schematics/HUD_supermini_NV3007_rev3_ru.png)
+![Схема HUD, ревизия 3](schematics/HUD_supermini_NV3007_rev3_ru_new_pins.png)
 
-[Редактируемый SVG](schematics/HUD_supermini_NV3007_rev3_ru.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_ru.pdf)
+[Редактируемый SVG](schematics/HUD_supermini_NV3007_rev3_ru_new_pins.svg) · [PDF](schematics/HUD_supermini_NV3007_rev3_ru_new_pins.pdf)
 
 | ESP32-S3 | Подключение |
 |---|---|

@@ -2,12 +2,12 @@
 #define USER_CONFIG_H
 
 /* GPIO numbers, not connector pin numbers. Edit to match your wiring. */
-#define HUD_LCD_SCK      4
-#define HUD_LCD_MOSI     5
-#define HUD_LCD_CS       2
-#define HUD_LCD_DC       7
-#define HUD_LCD_RST      6
-#define EXAMPLE_PIN_NUM_BK_LIGHT 1
+#define HUD_LCD_SCK              1
+#define HUD_LCD_MOSI             2
+#define HUD_LCD_CS               5
+#define HUD_LCD_DC               4
+#define HUD_LCD_RST              3
+#define EXAMPLE_PIN_NUM_BK_LIGHT 6
 #define HUD_LCD_SPI_HZ   20000000
 #define HUD_LCD_ROTATION 1   /* 1 or 3: landscape */
 #define HUD_LCD_INVERT   0

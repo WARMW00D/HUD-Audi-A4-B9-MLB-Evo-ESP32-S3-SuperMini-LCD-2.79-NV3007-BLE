@@ -33,13 +33,13 @@
 
 ## Скачать APK Android
 
-[Версия 1.3](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release**, до проверки OTA на реальных устройствах.
+[Версия 1.4.1](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release**, до проверки OTA на реальных устройствах.
 
-- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-release.apk) — обычная установка, 58.4 KB.
-- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-debug.apk) — 66.5 KB; `testOnly=true`: `adb install -r -t HUD-Control-1.4.1-debug.apk`.
-- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/SHA256SUMS-v29.1.9.txt).
+- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-release.apk) — обычная установка.
+- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.4.1-debug.apk`.
+- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/SHA256SUMS.txt).
 
-Сборки от WARMW00D: версия 1.3 (versionCode 4). Подписи APK v2 и целостность проверены. Ключи совпадают с прежними сборками соответствующего типа: release обновляется поверх release, debug поверх debug. Для смены типа требуется удаление приложения с потерей локальных настроек.
+Сборки от WARMW00D: версия 1.4.1 (versionCode 5). Подписи APK v2 и целостность проверены. Ключи совпадают с прежними сборками соответствующего типа: release обновляется поверх release, debug поверх debug. Для смены типа требуется удаление приложения с потерей локальных настроек.
 
 ## Что показывает HUD
 

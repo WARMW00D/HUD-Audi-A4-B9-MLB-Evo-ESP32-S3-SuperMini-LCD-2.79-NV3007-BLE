@@ -27,6 +27,7 @@
 #include "hud_light.h"
 #include "hud_config.h"
 #include "user_config.h"
+#include "src/display/hud_native_layout.h"
 #include "hud_mockup.h"
 #include "hud_data.h"
 #include "vze_table.h"
@@ -84,7 +85,6 @@ extern "C" {
 
 /* ---------- хэндлы ---------- */
 static lv_obj_t *sign_obj, *sign_lbl, *sign_end_line, *sign_car_l, *sign_car_r;
-static lv_obj_t *spd_outline[8];          /* красная обводка цифр скорости при превышении */
 static lv_obj_t *assist_box, *as_own, *as_front, *as_arcs, *as_line_l, *as_line_r;
 static lv_obj_t *jam_icon, *lim_icon;
 static lv_obj_t *ps_box, *ps_tri;           /* предупреждение pre sense */
@@ -371,12 +371,15 @@ static void hud_ota_ui_update(void)
     const uint32_t received = ota_ui_received;
     const uint32_t total = ota_ui_total;
     const bool show = state != 0;
+    static uint8_t last_state = 0;
     vis(ota_panel, show);
+    if (show && state != last_state) lv_obj_move_foreground(ota_panel);
+    last_state = state;
     if (!show) return;
 
     uint32_t pct = (total && received <= total) ? (received * 100u / total) : 0u;
     if (pct > 100u) pct = 100u;
-    lv_obj_set_width(ota_bar_fill, pct ? (OTA_BAR_W * pct) / 100u : 1);
+    hud_native_set_width(ota_bar_fill, pct ? (OTA_BAR_W * pct) / 100u : 1);
     vis(ota_bar_fill, pct != 0);
     char buf[48];
     if (state == 1) {
@@ -388,7 +391,7 @@ static void hud_ota_ui_update(void)
     } else if (state == 3) {
         set_text(ota_title, g_lang == HUD_LANG_EN ? "Update complete" : "Обновление завершено");
         snprintf(buf, sizeof buf, g_lang == HUD_LANG_EN ? "Restarting..." : "Перезапуск...");
-        pct = 100; lv_obj_set_width(ota_bar_fill, OTA_BAR_W);
+        pct = 100; hud_native_set_width(ota_bar_fill, OTA_BAR_W);
     } else {
         set_text(ota_title, g_lang == HUD_LANG_EN ? "Update failed" : "Ошибка обновления");
         snprintf(buf, sizeof buf, g_lang == HUD_LANG_EN ? "Transfer aborted" : "Передача прервана");
@@ -630,6 +633,9 @@ static void hud_update_cb(lv_timer_t *t)
         smode = it.mode; sval = it.val;
     }
     if (smode != SIGN_HIDE) {
+        static int last_center_mode = -1;
+        static uint16_t last_center_val = 0xffff;
+        bool center_needed = smode != last_center_mode || sval != last_center_val;
         bool warn_ph = d.sign_warn && (now % 500) < 250;
         set_bg_color(sign_obj, warn_ph ? C_SIGN_WARN : 0xffffff);
         set_border_color(sign_obj, (smode == SIGN_LIMIT || smode == SIGN_NOOVT) ? C_SIGN_RED : C_GRAY);
@@ -648,29 +654,25 @@ static void hud_update_cb(lv_timer_t *t)
                 set_font(sign_lbl, sval >= 100 ? &hud_font_sign3 : &hud_font_sign2);
                 set_text_color(sign_lbl, 0x000000);
             }
-            lv_obj_center(sign_lbl);
+            if (center_needed) lv_obj_center(sign_lbl);
         }
+        last_center_mode = smode;
+        last_center_val = sval;
     }
     vis(sign_obj, smode != SIGN_HIDE);
 
-    /* --- превышение: красная обводка цифр скорости ---
-       превышение = скорость - ограничение; от HUD_OVERSPEED_START % допуска обводка
-       проявляется, к 100 % допуска — полностью красная */
+    /* Speed tint: white at the fade start, red at the configured tolerance.
+       One label only; set_text_color skips unchanged RGB565 values. */
     {
-        int opa = 0;
-        if (lim_kmh_for_speed && (d.valid & V_SPEED) && !lv_obj_has_flag(speed_lbl, LV_OBJ_FLAG_HIDDEN)) {
-            float ex = (float)d.speed_kmh - (float)lim_kmh_for_speed;
-            opa = hud_overspeed_opacity(ex, g_speed_tol, HUD_OVERSPEED_START);
+        int mix = 0;
+        if (lim_kmh_for_speed && (d.valid & V_SPEED)) {
+            float excess = (float)d.speed_kmh - (float)lim_kmh_for_speed;
+            mix = hud_overspeed_opacity(excess, g_speed_tol, HUD_OVERSPEED_START);
         }
-        const char *txt_speed = lv_label_get_text(speed_lbl);
-        for (int i = 0; i < 8; i++) {
-            if (opa > 0) {
-                set_text(spd_outline[i], txt_speed);
-                if (lv_obj_get_style_text_opa(spd_outline[i], LV_PART_MAIN) != opa)
-                    lv_obj_set_style_text_opa(spd_outline[i], (lv_opa_t)opa, 0);
-            }
-            vis(spd_outline[i], opa > 0);
-        }
+        unsigned r = 255u - ((255u - ((C_OVERSPEED >> 16) & 255u)) * mix + 127u) / 255u;
+        unsigned g = 255u - ((255u - ((C_OVERSPEED >> 8) & 255u)) * mix + 127u) / 255u;
+        unsigned b = 255u - ((255u - (C_OVERSPEED & 255u)) * mix + 127u) / 255u;
+        set_text_color(speed_lbl, (r << 16) | (g << 8) | b);
     }
 
     /* --- мигалки --- */
@@ -765,7 +767,7 @@ static void hud_update_cb(lv_timer_t *t)
         static const NavImg *n2_last = NULL;
         if (n2 && n2 != n2_last) {
             lv_img_set_src(next_img, n2->img);
-            lv_obj_set_pos(next_img, NAV_AREA_W - NAV_SMALL_W - 2 + n2->x, 140 - NAV_SMALL_H - 1 + n2->y);
+            hud_native_set_pos(next_img, NAV_AREA_W - NAV_SMALL_W - 2 + n2->x, 140 - NAV_SMALL_H - 1 + n2->y);
         }
         n2_last = n2;
         vis(next_img, n2 != NULL);
@@ -775,10 +777,10 @@ static void hud_update_cb(lv_timer_t *t)
         static const NavImg *ni_last = NULL;
         if (ni && ni != ni_last) {
             lv_img_set_src(arrow_img, ni->img);
-            lv_obj_set_pos(arrow_img, ni->x, ni->y);
+            hud_native_set_pos(arrow_img, ni->x, ni->y);
             if (ni->road) {
                 lv_img_set_src(arrow_road, ni->road);
-                lv_obj_set_pos(arrow_road, ni->rx, ni->ry);
+                hud_native_set_pos(arrow_road, ni->rx, ni->ry);
             }
         }
         ni_last = ni;
@@ -851,7 +853,7 @@ static void hud_update_cb(lv_timer_t *t)
 #define BLINK_L_X  2
 #define RIGHT_ZONE_SHIFT_X 10 /* cumulative shift: two 5 px steps on canvas */
 /* Right blinker already had only a 2 px margin: move to the edge without clipping. */
-#define BLINK_R_X  (HUD_CANVAS_W - 46)
+#define BLINK_R_X  (HUD_LAYOUT_W - 46)
 #define BLINK_Y    119
 
 static lv_obj_t *make_blinker(lv_obj_t *scr, int x, int y,
@@ -861,20 +863,20 @@ static lv_obj_t *make_blinker(lv_obj_t *scr, int x, int y,
     lv_obj_t *c = lv_obj_create(scr);
     lv_obj_remove_style_all(c);
     lv_obj_set_size(c, outline->header.w, outline->header.h);
-    lv_obj_set_pos(c, x, y);
+    hud_native_set_pos(c, x, y);
     lv_obj_clear_flag(c, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
 
     lv_obj_t *o = lv_img_create(c);
     lv_img_set_src(o, outline);
     lv_obj_set_style_img_recolor(o, lv_color_black(), 0);
     lv_obj_set_style_img_recolor_opa(o, LV_OPA_COVER, 0);
-    lv_obj_set_pos(o, 0, 0);
+    hud_native_set_pos(o, 0, 0);
 
     lv_obj_t *f = lv_img_create(c);
     lv_img_set_src(f, fill);
     lv_obj_set_style_img_recolor(f, lv_color_hex(C_BLINK_GRN), 0);
     lv_obj_set_style_img_recolor_opa(f, LV_OPA_COVER, 0);
-    lv_obj_set_pos(f, 0, 0);
+    hud_native_set_pos(f, 0, 0);
 
     lv_obj_add_flag(c, LV_OBJ_FLAG_HIDDEN);
     *fill_out = f;
@@ -887,7 +889,7 @@ static lv_obj_t *car_img(lv_obj_t *parent, const lv_img_dsc_t *src, int x, int y
     lv_img_set_src(i, src);
     lv_obj_set_style_img_recolor(i, lv_color_hex(col), 0);
     lv_obj_set_style_img_recolor_opa(i, LV_OPA_COVER, 0);
-    lv_obj_set_pos(i, x, y);
+    hud_native_set_pos(i, x, y);
     return i;
 }
 
@@ -908,36 +910,36 @@ void build_hud_mockup(void)
     /* OTA overlay: it is created last, so it stays above the normal HUD. */
     ota_panel = lv_obj_create(scr);
     lv_obj_remove_style_all(ota_panel);
-    lv_obj_set_size(ota_panel, HUD_CANVAS_W, HUD_CANVAS_H);
-    lv_obj_set_pos(ota_panel, 0, 0);
+    hud_native_set_size(ota_panel, HUD_LAYOUT_W, HUD_LAYOUT_H);
+    hud_native_set_pos(ota_panel, 0, 0);
     lv_obj_set_style_bg_color(ota_panel, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(ota_panel, LV_OPA_COVER, 0);
     lv_obj_clear_flag(ota_panel, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     ota_title = lv_label_create(ota_panel);
     lv_obj_set_style_text_font(ota_title, &hud_font_menu, 0);
     lv_obj_set_style_text_color(ota_title, lv_color_white(), 0);
-    lv_obj_align(ota_title, LV_ALIGN_TOP_MID, 0, 38);
+    hud_native_align(ota_title, LV_ALIGN_TOP_MID, 0, 38);
     ota_status = lv_label_create(ota_panel);
     lv_obj_set_style_text_font(ota_status, &hud_font_menu, 0);
     lv_obj_set_style_text_color(ota_status, lv_color_hex(C_NAV_ARROW), 0);
     lv_obj_set_style_text_align(ota_status, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(ota_status, HUD_CANVAS_W);
-    lv_obj_align(ota_status, LV_ALIGN_TOP_MID, 0, 70);
+    hud_native_set_width(ota_status, HUD_LAYOUT_W);
+    hud_native_align(ota_status, LV_ALIGN_TOP_MID, 0, 70);
     ota_bar_bg = lv_obj_create(ota_panel);
     lv_obj_remove_style_all(ota_bar_bg);
     lv_obj_set_style_bg_opa(ota_bar_bg, LV_OPA_COVER, 0);
     lv_obj_clear_flag(ota_bar_bg, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_size(ota_bar_bg, OTA_BAR_W, 14);
-    lv_obj_align(ota_bar_bg, LV_ALIGN_TOP_MID, 0, 112);
-    lv_obj_set_style_radius(ota_bar_bg, 7, 0);
+    hud_native_set_size(ota_bar_bg, OTA_BAR_W, 14);
+    hud_native_align(ota_bar_bg, LV_ALIGN_TOP_MID, 0, 112);
+    lv_obj_set_style_radius(ota_bar_bg, hud_native_metric(7), 0);
     lv_obj_set_style_bg_color(ota_bar_bg, lv_color_hex(0x30343a), 0);
     ota_bar_fill = lv_obj_create(ota_bar_bg);
     lv_obj_remove_style_all(ota_bar_fill);
     lv_obj_set_style_bg_opa(ota_bar_fill, LV_OPA_COVER, 0);
     lv_obj_clear_flag(ota_bar_fill, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_size(ota_bar_fill, 0, 14);
-    lv_obj_set_pos(ota_bar_fill, 0, 0);
-    lv_obj_set_style_radius(ota_bar_fill, 7, 0);
+    hud_native_set_size(ota_bar_fill, 0, 14);
+    hud_native_set_pos(ota_bar_fill, 0, 0);
+    lv_obj_set_style_radius(ota_bar_fill, hud_native_metric(7), 0);
     lv_obj_set_style_bg_color(ota_bar_fill, lv_color_hex(C_NAV_ARROW), 0);
     lv_obj_add_flag(ota_panel, LV_OBJ_FLAG_HIDDEN);
 
@@ -945,12 +947,12 @@ void build_hud_mockup(void)
     sign_obj = lv_obj_create(scr);
     /* Знак — максимальный круг для левой зоны: 64 px (до значка ACC/LKA на x=68),
        красное кольцо 7 px (~11 %, как у дорожного знака), белое поле 50 px */
-    lv_obj_set_size(sign_obj, SIGN_D, SIGN_D);
-    lv_obj_set_pos(sign_obj, LX + 1, 2);
-    lv_obj_set_style_radius(sign_obj, LV_RADIUS_CIRCLE, 0);
+    hud_native_set_size(sign_obj, SIGN_D, SIGN_D);
+    hud_native_set_pos(sign_obj, LX + 1, 2);
+    lv_obj_set_style_radius(sign_obj, hud_native_metric(LV_RADIUS_CIRCLE), 0);
     lv_obj_set_style_bg_color(sign_obj, lv_color_white(), 0);
     lv_obj_set_style_border_color(sign_obj, lv_color_hex(0xcc0000), 0);
-    lv_obj_set_style_border_width(sign_obj, SIGN_RING, 0);
+    lv_obj_set_style_border_width(sign_obj, hud_native_metric(SIGN_RING), 0);
     lv_obj_clear_flag(sign_obj, LV_OBJ_FLAG_SCROLLABLE);
     sign_lbl = lv_label_create(sign_obj);
     lv_label_set_text(sign_lbl, "");
@@ -958,12 +960,14 @@ void build_hud_mockup(void)
     lv_obj_center(sign_lbl);
     /* диагональ "конец ограничения" (координаты в круге 55x55, pad 0) */
     {
-        static lv_point_t end_pts[2] = { {15, SIGN_D - 15}, {SIGN_D - 15, 15} };
+        static lv_point_t end_pts[2];
+        end_pts[0] = (lv_point_t){hud_native_x(15), hud_native_y(SIGN_D - 15)};
+        end_pts[1] = (lv_point_t){hud_native_x(SIGN_D - 15), hud_native_y(15)};
         sign_end_line = lv_line_create(sign_obj);
         lv_line_set_points(sign_end_line, end_pts, 2);
-        lv_obj_set_style_line_width(sign_end_line, 4, 0);
+        lv_obj_set_style_line_width(sign_end_line, hud_native_metric(4), 0);
         lv_obj_set_style_line_color(sign_end_line, lv_color_hex(C_GRAY), 0);
-        lv_obj_set_pos(sign_end_line, 0, 0);
+        hud_native_set_pos(sign_end_line, 0, 0);
         lv_obj_add_flag(sign_end_line, LV_OBJ_FLAG_HIDDEN);
     }
     /* «обгон запрещён»: левая машина красная, правая чёрная (знак 3.20) */
@@ -978,8 +982,8 @@ void build_hud_mockup(void)
     /* Значок ACC / Lane Assist — слои-маски, цвет каждого задаётся отдельно */
     assist_box = lv_obj_create(scr);
     lv_obj_remove_style_all(assist_box);
-    lv_obj_set_size(assist_box, 64, 54);
-    lv_obj_set_pos(assist_box, LX + 68, 5);
+    hud_native_set_size(assist_box, 64, 54);
+    hud_native_set_pos(assist_box, LX + 68, 5);
     lv_obj_clear_flag(assist_box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     as_line_l = car_img(assist_box, &img_assist_line_l, ASSIST_LINE_L_X, ASSIST_LINE_L_Y, C_GREEN);
     as_line_r = car_img(assist_box, &img_assist_line_r, ASSIST_LINE_R_X, ASSIST_LINE_R_Y, C_GREEN);
@@ -993,8 +997,8 @@ void build_hud_mockup(void)
        до манёвра под ней. Область 128x140: стрелка уменьшена в 1.5 раза, строка — ниже. */
     arrow_ph = lv_obj_create(scr);
     lv_obj_remove_style_all(arrow_ph);
-    lv_obj_set_size(arrow_ph, NAV_AREA_W, 140);
-    lv_obj_set_pos(arrow_ph, LX + 132, 5);
+    hud_native_set_size(arrow_ph, NAV_AREA_W, 140);
+    hud_native_set_pos(arrow_ph, LX + 132, 5);
     lv_obj_clear_flag(arrow_ph, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     arrow_road = car_img(arrow_ph, nav_big.turn[0].road, nav_big.turn[0].rx, nav_big.turn[0].ry, C_NAV_ROAD);   /* дорожный слой под стрелкой */
     lv_obj_add_flag(arrow_road, LV_OBJ_FLAG_HIDDEN);
@@ -1006,23 +1010,23 @@ void build_hud_mockup(void)
     lv_label_set_text(arrow_lbl, "...");
     lv_obj_set_style_text_font(arrow_lbl, &hud_font_route, 0);
     lv_obj_set_style_text_color(arrow_lbl, lv_color_hex(C_GRAY), 0);
-    lv_obj_align(arrow_lbl, LV_ALIGN_CENTER, 0, -12);
+    hud_native_align(arrow_lbl, LV_ALIGN_CENTER, 0, -12);
     lv_obj_add_flag(arrow_lbl, LV_OBJ_FLAG_HIDDEN);
     nav_dist_lbl = lv_label_create(arrow_ph);
     lv_label_set_text(nav_dist_lbl, "");
     lv_obj_set_style_text_font(nav_dist_lbl, &hud_font_route, 0);
     lv_obj_set_style_text_color(nav_dist_lbl, lv_color_white(), 0);
     lv_obj_set_style_text_align(nav_dist_lbl, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(nav_dist_lbl, NAV_AREA_W);
-    lv_obj_set_pos(nav_dist_lbl, 0, NAV_AREA_H + 2);
+    hud_native_set_width(nav_dist_lbl, NAV_AREA_W);
+    hud_native_set_pos(nav_dist_lbl, 0, NAV_AREA_H + 2);
     lv_obj_add_flag(nav_dist_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(arrow_ph, LV_OBJ_FLAG_HIDDEN);
 
     /* Машинка с открытыми элементами — в области стрелки */
     car_box = lv_obj_create(scr);
     lv_obj_remove_style_all(car_box);
-    lv_obj_set_size(car_box, NAV_AREA_W, 140);
-    lv_obj_set_pos(car_box, LX + 132, 5);
+    hud_native_set_size(car_box, NAV_AREA_W, 140);
+    hud_native_set_pos(car_box, LX + 132, 5);
     lv_obj_clear_flag(car_box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     car_img(car_box, &img_car_body,   CAR_BODY_X - 32,   CAR_BODY_Y,   C_CAR_BODY);
     car_img(car_box, &img_car_lights, CAR_LIGHTS_X - 32, CAR_LIGHTS_Y, C_CAR_LIGHTS);
@@ -1051,13 +1055,13 @@ void build_hud_mockup(void)
             for (int sd = 0; sd < 2; sd++) {
                 lv_obj_t *q = lv_obj_create(scr);
                 lv_obj_remove_style_all(q);
-                lv_obj_set_size(q, ACC_SQ, ACC_SQ);
+                hud_native_set_size(q, ACC_SQ, ACC_SQ);
                 int x = sd ? cx + ACC_GAP_MID / 2 + 1 + i * ACC_PITCH
                            : cx - ACC_GAP_MID / 2 - 1 - ACC_SQ - i * ACC_PITCH;
-                lv_obj_set_pos(q, x, ACC_Y);
+                hud_native_set_pos(q, x, ACC_Y);
                 lv_obj_set_style_bg_color(q, lv_color_hex(0xe01414), 0);
                 lv_obj_set_style_bg_opa(q, LV_OPA_COVER, 0);
-                lv_obj_set_style_radius(q, 1, 0);
+                lv_obj_set_style_radius(q, hud_native_metric(1), 0);
                 lv_obj_clear_flag(q, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
                 lv_obj_add_flag(q, LV_OBJ_FLAG_HIDDEN);
                 acc_sq[sd][i] = q;
@@ -1067,11 +1071,11 @@ void build_hud_mockup(void)
     /* Pre sense: красный треугольник + надпись, поверх стрелки и машинки */
     ps_box = lv_obj_create(scr);
     lv_obj_remove_style_all(ps_box);
-    lv_obj_set_size(ps_box, NAV_AREA_W, 140);
-    lv_obj_set_pos(ps_box, LX + 132, 5);
+    hud_native_set_size(ps_box, NAV_AREA_W, 140);
+    hud_native_set_pos(ps_box, LX + 132, 5);
     lv_obj_clear_flag(ps_box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     ps_tri = car_img(ps_box, &img_presense_tri, (NAV_AREA_W - 92) / 2, 6, 0xe01414);
-    car_img(ps_box, &img_presense_txt, (NAV_AREA_W - img_presense_txt.header.w) / 2, 98, 0xffffff);
+    car_img(ps_box, &img_presense_txt, (NAV_AREA_W - hud_layout_image_width(&img_presense_txt)) / 2, 98, 0xffffff);
     lv_obj_add_flag(ps_box, LV_OBJ_FLAG_HIDDEN);
 
     /* Бар дистанции */
@@ -1080,10 +1084,10 @@ void build_hud_mockup(void)
         int seg_w = 8, seg_h = 7, seg_gap = 2;
         for (int i = 0; i < 16; i++) {
             lv_obj_t *seg = lv_obj_create(scr);
-            lv_obj_set_size(seg, seg_w, seg_h);
-            lv_obj_set_pos(seg, bar_x, bar_y_bottom - (i + 1) * (seg_h + seg_gap));
-            lv_obj_set_style_border_width(seg, 0, 0);
-            lv_obj_set_style_radius(seg, 1, 0);
+            hud_native_set_size(seg, seg_w, seg_h);
+            hud_native_set_pos(seg, bar_x, bar_y_bottom - (i + 1) * (seg_h + seg_gap));
+            lv_obj_set_style_border_width(seg, hud_native_metric(0), 0);
+            lv_obj_set_style_radius(seg, hud_native_metric(1), 0);
             lv_obj_set_style_bg_color(seg, lv_color_hex(C_BAR_OFF), 0);
             lv_obj_clear_flag(seg, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_add_flag(seg, LV_OBJ_FLAG_HIDDEN);
@@ -1095,63 +1099,47 @@ void build_hud_mockup(void)
     route_icon = lv_label_create(scr);
     lv_label_set_text(route_icon, LV_SYMBOL_GPS);
     lv_obj_set_style_text_color(route_icon, lv_color_white(), 0);
-    lv_obj_set_pos(route_icon, LX + 5, 132);
+    hud_native_set_pos(route_icon, LX + 5, 132);
     lv_obj_add_flag(route_icon, LV_OBJ_FLAG_HIDDEN);
 
     route_lbl = lv_label_create(scr);
     lv_label_set_text(route_lbl, "");
     lv_obj_set_style_text_font(route_lbl, &hud_font_route, 0);
     lv_obj_set_style_text_color(route_lbl, lv_color_white(), 0);
-    lv_obj_set_pos(route_lbl, LX + 25, 126);
+    hud_native_set_pos(route_lbl, LX + 25, 126);
     lv_obj_add_flag(route_lbl, LV_OBJ_FLAG_HIDDEN);
 
     /* Статус связи — под стрелкой, виден только без связи */
     pair_lbl = lv_label_create(scr);
     lv_label_set_text(pair_lbl, "");
     lv_label_set_long_mode(pair_lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(pair_lbl, 252);
-    lv_obj_set_pos(pair_lbl, 8, 34);
+    hud_native_set_width(pair_lbl, 252);
+    hud_native_set_pos(pair_lbl, 8, 34);
     lv_obj_set_style_text_font(pair_lbl, &hud_font_menu, 0);
     lv_obj_set_style_text_color(pair_lbl, lv_color_hex(C_ORANGE), 0);
     lv_obj_add_flag(pair_lbl, LV_OBJ_FLAG_HIDDEN);
 
     link_lbl = lv_label_create(scr);
     lv_label_set_text(link_lbl, LV_SYMBOL_BLUETOOTH " ...");
+    lv_obj_set_style_text_font(link_lbl, LV_FONT_DEFAULT, 0);
     lv_obj_set_style_text_color(link_lbl, lv_color_hex(0x666666), 0);
     /* в центре области стрелки: без связи стрелки и машинки всё равно нет,
        а низ области занят баром ускорения */
-    lv_obj_align(link_lbl, LV_ALIGN_TOP_LEFT, LX + 132 + NAV_AREA_W / 2 - 18, 5 + 58 - 8);
+    hud_native_align(link_lbl, LV_ALIGN_TOP_LEFT, LX + 132 + NAV_AREA_W / 2 - 18, 5 + 58 - 8);
 
     /* ===== Правая зона ===== */
     const int RX = 265 + RIGHT_ZONE_SHIFT_X;
 
     /* Скорость: фиксированная ширина под 3 цифры, выравнивание вправо,
        правый край области = RX + 244 = 519, y=20; последние 5 px глифа пустые. */
-    /* обводка цифр скорости: 8 красных копий со сдвигом, под основной надписью */
-    {
-        static const int8_t off[8][2] = { {-3,0},{3,0},{0,-3},{0,3},{-2,-2},{2,-2},{-2,2},{2,2} };
-        for (int i = 0; i < 8; i++) {
-            lv_obj_t *o = lv_label_create(scr);
-            lv_label_set_text(o, "");
-            lv_obj_set_style_text_font(o, &hud_font_speed, 0);
-            lv_obj_set_style_text_color(o, lv_color_hex(C_OVERSPEED), 0);
-            lv_obj_set_style_text_align(o, LV_TEXT_ALIGN_RIGHT, 0);
-            lv_label_set_long_mode(o, LV_LABEL_LONG_CLIP);
-            lv_obj_set_width(o, 244);
-            lv_obj_set_pos(o, RX + off[i][0], 20 + off[i][1]);
-            lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-            spd_outline[i] = o;
-        }
-    }
-
     speed_lbl = lv_label_create(scr);
     lv_label_set_text(speed_lbl, "");
     lv_obj_set_style_text_font(speed_lbl, &hud_font_speed, 0);
     lv_obj_set_style_text_color(speed_lbl, lv_color_white(), 0);
     lv_obj_set_style_text_align(speed_lbl, LV_TEXT_ALIGN_RIGHT, 0);
     lv_label_set_long_mode(speed_lbl, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(speed_lbl, 244);
-    lv_obj_set_pos(speed_lbl, RX, 20);
+    hud_native_set_width(speed_lbl, 244);
+    hud_native_set_pos(speed_lbl, RX, 20);
     lv_obj_add_flag(speed_lbl, LV_OBJ_FLAG_HIDDEN);
 
     /* Режим КП — над скоростью, серым, правый край по цифрам скорости
@@ -1161,21 +1149,21 @@ void build_hud_mockup(void)
     lv_obj_set_style_text_font(gear_lbl, &hud_font_gear, 0);
     lv_obj_set_style_text_color(gear_lbl, lv_color_hex(C_LABEL_GRAY), 0);
     lv_obj_set_style_text_align(gear_lbl, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_width(gear_lbl, 238);
-    lv_obj_set_pos(gear_lbl, RX, 1);
+    hud_native_set_width(gear_lbl, 238);
+    hud_native_set_pos(gear_lbl, RX, 1);
     lv_obj_add_flag(gear_lbl, LV_OBJ_FLAG_HIDDEN);
 
     /* Сколько заправить до полного — над зоной скорости слева, на одной линии
        с режимом КП: маленькая колонка АЗС + «13 л» / «3.4 gal», серым */
     /* Convert 10 physical display pixels to the pre-scaled canvas (12 px). */
-    const int tank_shift_x = (10 * HUD_CANVAS_W + HUD_PANEL_W / 2) / HUD_PANEL_W;
+    const int tank_shift_x = (10 * HUD_LAYOUT_W + HUD_PANEL_W / 2) / HUD_PANEL_W;
     tank_icon = car_img(scr, &img_fuel_icon, 265 + tank_shift_x, 2, C_LABEL_GRAY);
     lv_obj_add_flag(tank_icon, LV_OBJ_FLAG_HIDDEN);
     tank_lbl = lv_label_create(scr);
     lv_label_set_text(tank_lbl, "");
     lv_obj_set_style_text_font(tank_lbl, &hud_font_fuel, 0);
     lv_obj_set_style_text_color(tank_lbl, lv_color_hex(C_LABEL_GRAY), 0);
-    lv_obj_set_pos(tank_lbl, 265 + tank_shift_x + 15 + 5, 1);                 /* базовая линия — как у режима КП */
+    hud_native_set_pos(tank_lbl, 265 + tank_shift_x + 15 + 5, 1);                 /* базовая линия — как у режима КП */
     lv_obj_add_flag(tank_lbl, LV_OBJ_FLAG_HIDDEN);
 
     acc_dot = car_img(scr, &img_acc_set, RX + 4, 145, C_GREEN);
@@ -1185,7 +1173,7 @@ void build_hud_mockup(void)
     lv_label_set_text(acc_speed_lbl, "");
     lv_obj_set_style_text_font(acc_speed_lbl, &hud_font_small, 0);
     lv_obj_set_style_text_color(acc_speed_lbl, lv_color_hex(0xaaaaaa), 0);
-    lv_obj_set_pos(acc_speed_lbl, RX + 38, 146);
+    hud_native_set_pos(acc_speed_lbl, RX + 38, 146);
     lv_obj_add_flag(acc_speed_lbl, LV_OBJ_FLAG_HIDDEN);
 
     /* Лимитер — надпись LIM на месте значка ACC, по центру высоты цифр скорости */
@@ -1199,11 +1187,11 @@ void build_hud_mockup(void)
     /* подпись единиц: выравнивание вправо, правый край 498 + сдвиг */
     kmh_lbl = lv_label_create(scr);
     lv_label_set_text(kmh_lbl, "");
-    lv_obj_set_width(kmh_lbl, 125);
+    hud_native_set_width(kmh_lbl, 125);
     lv_obj_set_style_text_align(kmh_lbl, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_style_text_font(kmh_lbl, &hud_font_kmh, 0);
     lv_obj_set_style_text_color(kmh_lbl, lv_color_hex(C_LABEL_GRAY), 0);
-    lv_obj_set_pos(kmh_lbl, 498 - 125 + RIGHT_ZONE_SHIFT_X, 133);
+    hud_native_set_pos(kmh_lbl, 498 - 125 + RIGHT_ZONE_SHIFT_X, 133);
 
     /* Мигалки */
     turn_left_container  = make_blinker(scr, BLINK_L_X, BLINK_Y,

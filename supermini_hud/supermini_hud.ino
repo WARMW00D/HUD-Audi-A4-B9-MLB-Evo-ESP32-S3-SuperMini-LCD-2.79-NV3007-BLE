@@ -17,7 +17,7 @@ void setup()
 {
     Serial.begin(115200);
     delay(300);
-    Serial.println("[fw] HUD Super Mini v29.1.9 / BLE OTA");
+    Serial.println("[fw] HUD Super Mini v30.0.0 / BLE OTA");
     /* Legacy duty convention: 255 = dark, 0 = full brightness. */
     lcd_bl_pwm_bsp_init(255);
     hud_log_write("=== Super Mini / NV3007 HUD ===\n");

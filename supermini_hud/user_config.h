@@ -19,11 +19,13 @@
 #define HUD_PANEL_H     142
 /* Compact layout, scaled uniformly to the whole 428x142 panel.
    Navigation width: 192 -> 128 before final scaling. */
-#define HUD_CANVAS_W    518
-#define HUD_CANVAS_H    172
+#define HUD_CANVAS_W    HUD_PANEL_W
+#define HUD_CANVAS_H    HUD_PANEL_H
 #define HUD_VIEW_H      HUD_PANEL_H
 #define HUD_VIEW_Y      0
-#define HUD_STRIPE_H    8
+#define HUD_STRIPE_H    16
+#define HUD_LAYOUT_W    518
+#define HUD_LAYOUT_H    172
 #define EXAMPLE_LVGL_TICK_PERIOD_MS 5
 #define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 5
 #define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 50

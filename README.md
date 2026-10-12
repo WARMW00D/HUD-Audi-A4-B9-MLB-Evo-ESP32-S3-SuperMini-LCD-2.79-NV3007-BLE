@@ -1,4 +1,4 @@
-# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE
+# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v30.0.0
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
@@ -6,18 +6,24 @@ A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, sp
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v29.1.9. Android app: 1.4.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt v29.1.9 app firmware and Android 1.4.1 APKs are available in Releases below.
+**Firmware: v30.0.0. Android app: 1.4.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt v30.0.0 app firmware and Android 1.4.1 APKs are available in Releases below.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v29.1.9 / Android app 1.4.1 (versionCode 5)**.
+Source versions: **HUD firmware v30.0.0 / Android app 1.4.1 (versionCode 5)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
-- **Overspeed tolerance:** set **0–100 km/h**, default **20 km/h**, always entered in km/h even with mph selected. The red speed outline fades in from 75% of tolerance and is fully red at 100%; zero makes any positive overspeed fully red.
+- **Overspeed tolerance:** set **0–100 km/h**, default **20 km/h**, always entered in km/h even with mph selected. The speed digits transition smoothly from white to red from 75% of tolerance to 100%; zero makes any positive overspeed fully red.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
-These controls need **app 1.4.1 + firmware v29.1.9**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v29.1.9 app-BIN are published in Releases; integrity was verified. If v29.0 and its OTA partition table are already installed, v29.1 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+These controls need **app 1.4.1 + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+
+## v30.0.0 rendering changes
+
+- Native output at **428 × 142**; the previous 518 × 172 intermediate canvas and its scaling pass are removed.
+- The speed outline is removed. One speed label changes colour smoothly from white to red as the displayed limit is approached.
+- Navigation artwork and road masks are retained from the working 29.1.9 build.
 
 ## HUD on hardware
 
@@ -27,9 +33,9 @@ Photo supplied by WARMW00D: speed, gear, speed-limit sign, navigation and fuel i
 
 ## Download firmware BIN
 
-[v29.1 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v29.1.9) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v29.1.9/HUD-SuperMini-v29.1.9-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v29.1.9/SHA256SUMS-v29.1.9.txt).
+[v30.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v30.0.0) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/HUD-SuperMini-v30.0.0-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/SHA256SUMS-v30.0.0.txt).
 
-Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum and SHA-256 were verified. **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; this app-BIN cannot migrate partitions. The v29.0 two-slot OTA layout is compatible. Real-device OTA transfer has not been verified here.
+Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum and SHA-256 were verified. **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; this app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. Real-device OTA transfer has not been verified here.
 
 ## Download Android APK
 
@@ -49,7 +55,7 @@ WARMW00D supplied these builds: version 1.4.1 (versionCode 5). APK v2 signatures
 | ACC and limiter | Set speed, ACC target and traffic jam assist; LIM replaces the ACC set-speed icon |
 | Lane / Side Assist | Lane detection, steering and warnings; red lines for blind-spot indications |
 | Traffic signs | Main sign: valid VZE → explicit PSD → PSD legal limit; additional signs cycle |
-| Overspeed | Red outline around speed digits, based on the displayed main limit |
+| Overspeed | Speed digits fade smoothly from white to red near the displayed main limit |
 | Navigation | Main maneuver, next maneuver, distance, progress bar, destination distance and time |
 | Doors / pre sense | Open vehicle parts replace navigation; pre sense has higher priority |
 | Turn signals | Green arrows; hazard lights use red |
@@ -73,7 +79,7 @@ The HUD decodes raw frames locally using `can_decode.c`. Select the source in `s
 
 The [CAN sniffer / BLE gateway](https://github.com/WARMW00D/esp32-CAN-sniffer-logger-screener) uses the ACL protocol (firmware 2.6.0+). The HUD sends its ACL after every gateway connection. Phone settings and OTA are separate GATT services; NimBLE acts as both gateway client and phone server. First-time gateway pairing waits if the phone is connected.
 
-LVGL renders a compact 518 × 172 canvas, uniformly scales it to 428 × 142, and sends changed strips over SPI. Display code uses PSRAM; no LVGL calls should be added from BLE callbacks.
+LVGL renders directly at the physical 428 × 142 resolution and sends only changed strips over SPI. The native test build removes the 518 × 172 → 428 × 142 scaling step; the partial buffer fits in internal RAM. No LVGL calls should be added from BLE callbacks.
 
 [CAN signals and gateway protocol](docs/CAN.md) · [BLE settings, Russian](supermini_hud/BLE_SETTINGS_ru.md)
 
@@ -140,9 +146,9 @@ Open `supermini_hud/supermini_hud.ino` in Arduino IDE. Keep the sketch-folder na
 
 Put `supermini_hud/config/lv_conf.h` next to the installed `lvgl/` directory. Required: `LV_COLOR_DEPTH 16`, `LV_USE_FONT_COMPRESSED 1`. LVGL 9 is not supported. Both `LV_COLOR_16_SWAP` settings are handled by the display port.
 
-**Upgrading v28.x → v29.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
+**Upgrading v28.x → v30.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
 
-Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v29.1.9 / BLE OTA` and a next-slot capacity of 2031616.
+Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v30.0.0 / BLE OTA` and a next-slot capacity of 2031616.
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 
@@ -188,12 +194,12 @@ For bench testing, use `HUD_SRC_FAKE` or a compatible BLE log player. Enable `HU
 | Custom text missing | `LV_USE_FONT_COMPRESSED 1` and LVGL 8 |
 | Black screen / allocation error | QSPI PSRAM enabled, GPIO, power, LCD rotation and column offsets |
 | No gateway data | Gateway ACL protocol, name, bonding/passkey and source mode |
-| OTA service absent | Install v29.0 over USB; reconnect after Service Changed; check slot capacity |
+| OTA service absent | Install v30.0 over USB; reconnect after Service Changed; check slot capacity |
 | App reconnect fails after removing Android bond | Reset phone ownership with BOOT, then pair again |
 
 ## Validation status
 
-WARMW00D supplied the v29.1.9 ESP32-S3 application BIN and Android v1.4.1 APKs. Firmware image checksum/SHA-256 and APK signatures/content digests were verified. Host tests pass. Builds were not run here; Android lint and real-device OTA transfer testing remain pending.
+WARMW00D supplied the v30.0.0 ESP32-S3 application BIN and Android v1.4.1 APKs. Firmware image checksum/SHA-256 and APK signatures/content digests were verified. Host tests pass. Builds were not run here; Android lint and real-device OTA transfer testing remain pending.
 
 Host tests cover real SHA-256 through OpenSSL with mocked NimBLE/ESP-IDF: full transfer, commit only after verification, invalid size/header/chip/hash, flash failures, offsets, cancel/disconnect/timeout, owner authorization, duplicate commit and lost final ACK. Display scaling, dirty strips, decoder and settings/NVS also have host tests. Mocks do not establish real BLE interoperability or flash reliability.
 

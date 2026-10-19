@@ -105,10 +105,10 @@ LVGL renders directly at the physical 428 × 142 resolution and sends only chang
 | GPIO3 | LCD RES |
 | GPIO6 | LCD BL / PWM |
 | GPIO8 | CAN CRX / RXD |
-| GPIO9 | TWAI TX reservation — leave physically unconnected |
+| GPIO9 | TWAI TX → CAN CTX / TXD (wire it; in `LISTEN_ONLY` the controller keeps it recessive) |
 | GPIO0 | On-board BOOT button |
 
-CAN CTX/TXD → 10 kΩ → board 3V3; S → VIO for silent mode. CAN-H / CAN-L are a twisted pair. Disable the module’s 120 Ω termination when connecting to an already terminated vehicle bus. Receive-only protection combines TWAI `LISTEN_ONLY`, disconnected GPIO9 and hardware silent mode. SCL/SDA labels on this display refer to SPI, not I²C; MISO is unused. If BL directly powers LEDs instead of being a logic input, use a suitable external driver.
+CAN CTX/TXD → GPIO9, and also → 10 kΩ → board 3V3; S → VIO for silent mode. Do not leave CTX/TXD floating: a floating TXD is not guaranteed to stay recessive on every module. CAN-H / CAN-L are a twisted pair. Disable the module’s 120 Ω termination when connecting to an already terminated vehicle bus. Receive-only protection combines TWAI `LISTEN_ONLY` and hardware silent mode (S → VIO); the 10 kΩ pull-up keeps TXD recessive while the ESP32 boots or resets. SCL/SDA labels on this display refer to SPI, not I²C; MISO is unused. If BL directly powers LEDs instead of being a logic input, use a suitable external driver.
 
 The drawing is a wiring diagram, not a PCB layout or a complete automotive power-protection design. USB power isolation is not drawn; account for it when flashing while external 5 V is connected.
 
@@ -179,7 +179,7 @@ To replace the phone: while the HUD is running, hold **BOOT for 5 s and release*
 
 | Setting | Default |
 |---|---|
-| `HUD_CAN_RX_PIN` / `HUD_CAN_TX_PIN` | 8 / 9, with TX unconnected |
+| `HUD_CAN_RX_PIN` / `HUD_CAN_TX_PIN` | 8 / 9, TX wired to CTX/TXD |
 | `HUD_CAN_BITRATE_K` | 500 |
 | `HUD_LCD_SPI_HZ` / `HUD_LCD_ROTATION` | 20 MHz / 1 |
 | `HUD_BR_DARK_WHEEL_MIN` / `_MAX` | 2 / 40 |

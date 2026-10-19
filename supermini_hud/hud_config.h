@@ -31,10 +31,12 @@
 #define HUD_BLE_PAIR_MSG_AFTER 3
 
 /* ---- TWAI (для HUD_SRC_TWAI и HUD_SRC_AUTO) ----
-   Super Mini: RX GPIO8, TX GPIO9 (не подключён).
-   TJA1051T/3: CRX/RXD -> GPIO8, VCC -> 5V платы,
-   VIO и S (Silent) -> 3V3 платы, CTX/TXD через 10 кОм -> VIO.
-   TWAI работает в LISTEN_ONLY. GPIO9 оставить свободным. */
+   Super Mini: RX GPIO8, TX GPIO9.
+   TJA1051T/3: CRX/RXD -> GPIO8, CTX/TXD -> GPIO9, VCC -> 5V платы,
+   VIO и S (Silent) -> 3V3 платы, CTX/TXD дополнительно через 10 кОм -> VIO.
+   TWAI работает в LISTEN_ONLY, передатчик чипа выключен пином S.
+   CTX/TXD в воздухе не оставлять: не на каждом модуле он гарантированно
+   остаётся рецессивным, и тогда шина не принимается. */
 #define HUD_CAN_RX_PIN       8
 #define HUD_CAN_TX_PIN       9
 #define HUD_CAN_BITRATE_K    500    /* I-CAN MLB-Evo — 500 кбит/с */

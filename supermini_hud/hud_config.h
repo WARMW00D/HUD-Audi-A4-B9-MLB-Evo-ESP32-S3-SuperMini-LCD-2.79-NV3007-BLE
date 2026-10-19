@@ -33,7 +33,7 @@
 /* ---- TWAI (для HUD_SRC_TWAI и HUD_SRC_AUTO) ----
    Super Mini: RX GPIO8, TX GPIO9.
    TJA1051T/3: CRX/RXD -> GPIO8, CTX/TXD -> GPIO9, VCC -> 5V платы,
-   VIO и S (Silent) -> 3V3 платы, CTX/TXD дополнительно через 10 кОм -> VIO.
+   VIO и S (Silent) -> 3V3 платы.
    TWAI работает в LISTEN_ONLY, передатчик чипа выключен пином S.
    CTX/TXD в воздухе не оставлять: не на каждом модуле он гарантированно
    остаётся рецессивным, и тогда шина не принимается. */

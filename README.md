@@ -6,18 +6,18 @@ A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, sp
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.0.0. Android app: 1.4.2.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.4.1 APKs are available there too.
+**Firmware: v31.0.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.5.0 APKs are available there too.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v31.0.0 / Android app 1.4.2 (versionCode 6)**.
+Source versions: **HUD firmware v31.0.0 / Android app 1.5.0 (versionCode 7)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
 - **Overspeed tolerance:** set **0–100 km/h**, default **20 km/h**, always entered in km/h even with mph selected. The speed digits transition smoothly from white to red from 75% of tolerance to 100%; zero makes any positive overspeed fully red.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
-These controls need **app 1.4.1 + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+These controls need **app 1.4.1 or newer + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
 
 ## v31.0.0 changes
 
@@ -55,13 +55,13 @@ Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum 
 
 ## Download Android APK
 
-[Version 1.4.1](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release** on GitHub; real-device OTA has been confirmed by the maintainer.
+[Version 1.5.0](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.5.0) — **Pre-release** on GitHub; real-device OTA has been confirmed by the maintainer.
 
-- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-release.apk) — normal installation.
-- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.4.1-debug.apk`.
-- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/SHA256SUMS.txt).
+- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/HUD-Control-1.5.0-release.apk) — normal installation.
+- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/HUD-Control-1.5.0-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.5.0-debug.apk`.
+- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/SHA256SUMS.txt).
 
-WARMW00D supplied these builds: version 1.4.1 (versionCode 5). APK v2 signatures and content digests were verified. Each flavor retains its previous signing key: release updates release and debug updates debug. Switching flavors requires uninstalling the app and loses its local settings.
+WARMW00D supplied these builds: version 1.5.0 (versionCode 7). APK v2 signatures and content digests were verified. Each flavor retains its previous signing key: release updates release and debug updates debug. Switching flavors requires uninstalling the app and loses its local settings.
 
 ## What the HUD shows
 

@@ -29,6 +29,7 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0**. App 1.4.1 still s
 - Speed cameras: GPS position and heading come from the car's CAN (NavPos_01 0x486, NavData_01 0x484). The database `cams.bin` (from `gen_cams.py`) lives in the W25Q128 flash and is loaded into PSRAM at start-up; `cam_alert` finds the nearest camera ahead by binary search, no index file is needed. The sign (yellow square, limit disc, camera icon, distance) and the speed-digit colouring follow the Waveshare design; a warning sound plays when the speed is over the camera limit (`HUD_CAMS`, `HUD_CAM_*` in `hud_config.h`).
 - Camera display, camera warning sound and sound volume (0–100 %, 0 = silent) are switchable from the Android app (new BLE settings `…000D`, `…000E`, `…000F`, kept in NVS).
 - Camera database upload from the Android app over BLE, streamed with automatic resume and no restart: `docs/CAMS_UPLOAD.md`. Needs app **1.5.0**.
+- MQB (early support): new `HUD_PLATFORM` switch in `hud_config.h` (`HUD_PLATFORM_MLB_EVO` by default, or `HUD_PLATFORM_MQB`). On MQB the ACL and decoder take ACC from `0x2A7` / `0x30C` (active state, set speed, vehicle ahead), skip the absent `0x2A9` / `0x64F` and read the brightness regulator from `0x5F0`. Tested only on replayed logs of a Skoda Octavia A7; see "Vehicle platform: MLB-Evo and MQB" below for the signal table and open points.
 
 ## v30.0.1 changes
 

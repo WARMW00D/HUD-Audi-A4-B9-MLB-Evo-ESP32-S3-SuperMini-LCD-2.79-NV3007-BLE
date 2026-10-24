@@ -33,6 +33,7 @@ LV_IMG_DECLARE(img_presense_tri);
 LV_IMG_DECLARE(img_sign_car);
 LV_IMG_DECLARE(img_fuel_icon);
 LV_IMG_DECLARE(img_presense_txt);
+LV_IMG_DECLARE(img_cam_icon);
 
 /* Смещения: CAR_* внутри области 192x140, ASSIST_* внутри 64x54 */
 #define CAR_BODY_X 64

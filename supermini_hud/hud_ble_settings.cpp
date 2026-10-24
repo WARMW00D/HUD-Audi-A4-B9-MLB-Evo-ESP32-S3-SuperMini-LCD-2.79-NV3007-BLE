@@ -8,6 +8,8 @@
 #include "hud_light.h"
 #include "hud_ble_settings.h"
 #include "hud_ble_ota.h"
+#include "hud_ble_cams.h"
+#include "hud_sound.h"
 #include <cstring>
 #include <cctype>
 
@@ -17,7 +19,7 @@ static_assert(HUD_SETTINGS_PIN >= 100000 && HUD_SETTINGS_PIN <= 999999,
 #error "HUD settings use legacy directed advertising: disable extended advertising."
 #endif
 static const char *SERVICE = "74d0a100-3d92-4f50-9b1a-478142000001";
-static const char *UUIDS[11] = {
+static const char *UUIDS[14] = {
     "74d0a100-3d92-4f50-9b1a-478142000002", /* PSD */
     "74d0a100-3d92-4f50-9b1a-478142000003", /* VZE */
     "74d0a100-3d92-4f50-9b1a-478142000004", /* RU / EN */
@@ -28,7 +30,10 @@ static const char *UUIDS[11] = {
     "74d0a100-3d92-4f50-9b1a-478142000009", /* overspeed tolerance: 0..100 km/h */
     "74d0a100-3d92-4f50-9b1a-47814200000A", /* photoresistor enabled: 0 / 1 */
     "74d0a100-3d92-4f50-9b1a-47814200000B", /* capture dark calibration point */
-    "74d0a100-3d92-4f50-9b1a-47814200000C"  /* capture bright calibration point */
+    "74d0a100-3d92-4f50-9b1a-47814200000C", /* capture bright calibration point */
+    "74d0a100-3d92-4f50-9b1a-47814200000D", /* speed cameras shown: 0 / 1 */
+    "74d0a100-3d92-4f50-9b1a-47814200000E", /* camera warning sound: 0 / 1 */
+    "74d0a100-3d92-4f50-9b1a-47814200000F"  /* sound volume: 0..100 %, 0 = silent */
 };
 struct Stored {
     uint8_t version;
@@ -41,26 +46,27 @@ struct Stored {
 // Additional settings use separate NVS keys; each write commits before apply().
 static_assert(HUD_OVERSPEED_TOL_KMH >= 0 && HUD_OVERSPEED_TOL_KMH <= 100, "Tolerance must be 0..100 km/h.");
 static Stored state;
-static uint8_t extra[3];
+static uint8_t extra[6];   /* tank, accel bar, tolerance, cameras, camera sound, volume */
 static uint8_t light_enabled;
 static uint8_t light_command[2];
-static const char *EXTRA_KEYS[3] = {"tank-l", "accel-bar", "speed-tol"};
+static const char *EXTRA_KEYS[6] = {"tank-l", "accel-bar", "speed-tol", "cams-on", "cam-beep", "snd-vol"};
 static uint8_t &setting(unsigned i) {
     if (i < 5) return state.value[i];
     if (i < 8) return extra[i - 5];
     if (i == 8) return light_enabled;
+    if (i >= 11) return extra[i - 8];                    /* 11..13 -> extra[3..5] */
     return light_command[i - 9];
 }
 static bool valid_setting(unsigned i, uint8_t v) {
     if (i == 5) return v >= 1 && v <= 200;
-    if (i == 7) return v <= 100;
+    if (i == 7 || i == 13) return v <= 100;
     return v <= 1;
 }
 static_assert(HUD_TANK_L >= 1 && HUD_TANK_L <= 200, "Tank capacity must be 1..200 litres.");
 static Preferences prefs;
 static SemaphoreHandle_t mutex;
 static NimBLEServer *server;
-static NimBLECharacteristic *chars[11];
+static NimBLECharacteristic *chars[14];
 static bool gateway_security;
 static uint16_t phone_handle = BLE_HS_CONN_HANDLE_NONE;
 static uint32_t phone_since;
@@ -94,6 +100,7 @@ static void apply() {
     hud_set_gallons(state.value[4]);
     hud_set_tank_l(extra[0]); hud_set_accel_bar(extra[1]); hud_set_overspeed_tol(extra[2]);
     hud_light_set_enabled(light_enabled != 0);
+    hud_set_cams(extra[3] != 0); hud_set_cam_beep(extra[4] != 0); hud_sound_set_volume(extra[5]);
 }
 /* Call under mutex, never automatically advertise from disconnect callbacks. */
 static void advertise() {
@@ -145,6 +152,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     }
     void onDisconnect(NimBLEServer *, NimBLEConnInfo &ci, int) override {
         hud_ble_ota_disconnect(ci.getConnHandle());
+        hud_ble_cams_disconnect(ci.getConnHandle());
         Lock lock;
         if (phone_handle == ci.getConnHandle()) {
             phone_handle = BLE_HS_CONN_HANDLE_NONE; phone_authenticated = false;
@@ -201,7 +209,7 @@ public:
             if (ok) {
                 const auto v = c->getValue();
                 bool saved = false;
-                if (index >= 9) {
+                if (index == 9 || index == 10) {
                     /* Calibration commands are edge actions: write 1 after
                        closing the sensor or illuminating it with a flashlight. */
                     if (v.size() == 1 && v.data()[0] == 1) {
@@ -226,25 +234,27 @@ public:
                         Stored next = state; next.value[index] = value;
                         saved = save(next);
                         if (saved) state = next;
-                    } else if (!saved && index < 8) {
-                        saved = prefs.putUChar(EXTRA_KEYS[index - 5], value) == 1;
+                    } else if (!saved && (index < 8 || index >= 11)) {
+                        const unsigned k = index < 8 ? index - 5 : index - 8;
+                        saved = prefs.putUChar(EXTRA_KEYS[k], value) == 1;
                         if (saved) setting(index) = value;
                     } else if (!saved && index == 8) {
                         saved = prefs.putBool("ldr", value != 0) == 1;
                         if (saved) setting(index) = value;
                     }
                     if (saved) apply();
+                    if (saved && index == 13) hud_sound_play(HUD_SND_BEEP);   /* hear the new volume */
                 }
-                if (!saved && index < 9) Serial.println("[settings] NVS write failed or value unchanged.");
+                if (!saved && (index < 9 || index >= 11)) Serial.println("[settings] NVS write failed or value unchanged.");
                 c->setValue(&setting(index), 1); /* readback is authoritative */
             }
         }
         if (!ok) server->disconnect(ci);
     }
 };
-static SettingCallbacks setting_callbacks[11] = {
+static SettingCallbacks setting_callbacks[14] = {
     SettingCallbacks(0), SettingCallbacks(1), SettingCallbacks(2), SettingCallbacks(3), SettingCallbacks(4),
-    SettingCallbacks(5), SettingCallbacks(6), SettingCallbacks(7), SettingCallbacks(8), SettingCallbacks(9), SettingCallbacks(10)
+    SettingCallbacks(5), SettingCallbacks(6), SettingCallbacks(7), SettingCallbacks(8), SettingCallbacks(9), SettingCallbacks(10), SettingCallbacks(11), SettingCallbacks(12), SettingCallbacks(13)
 };
 void hud_ble_settings_begin() {
     mutex = xSemaphoreCreateMutex();
@@ -273,6 +283,12 @@ void hud_ble_settings_begin() {
     if (!valid_setting(6, extra[1])) extra[1] = HUD_ACCEL_BAR;
     extra[2] = prefs.getUChar("speed-tol", HUD_OVERSPEED_TOL_KMH);
     if (!valid_setting(7, extra[2])) extra[2] = HUD_OVERSPEED_TOL_KMH;
+    extra[3] = prefs.getUChar("cams-on", HUD_CAMS_ON);
+    extra[4] = prefs.getUChar("cam-beep", HUD_CAM_BEEP);
+    if (extra[3] > 1) extra[3] = HUD_CAMS_ON;
+    if (extra[4] > 1) extra[4] = HUD_CAM_BEEP;
+    extra[5] = prefs.getUChar("snd-vol", (HUD_SOUND_DUTY_PCT > 50 ? 50 : HUD_SOUND_DUTY_PCT) * 2);
+    if (extra[5] > 100) extra[5] = 100;
     light_enabled = prefs.getBool("ldr", HUD_LDR_ON);
     light_command[0] = light_command[1] = 0;
     hud_light_set_cal(prefs.getUShort("ldk", HUD_LDR_DARK_MV), prefs.getUShort("ldb", HUD_LDR_BRIGHT_MV));
@@ -289,7 +305,7 @@ void hud_ble_settings_begin() {
     server->setCallbacks(&server_callbacks, false);
     server->advertiseOnDisconnect(false);
     auto *service = server->createService(SERVICE);
-    for (unsigned i = 0; i < 11; ++i) {
+    for (unsigned i = 0; i < 14; ++i) {
         chars[i] = service->createCharacteristic(UUIDS[i], NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE |
             NIMBLE_PROPERTY::READ_AUTHEN | NIMBLE_PROPERTY::WRITE_AUTHEN);
         chars[i]->setCallbacks(&setting_callbacks[i]);
@@ -297,11 +313,12 @@ void hud_ble_settings_begin() {
     }
     service->start();
     hud_ble_ota_begin(server, ota_authorized_handle);
+    hud_ble_cams_begin(server, ota_authorized_handle);
     if (!server->start()) abort();
     // The bonded Android may cache the pre-OTA GATT database.
-    if (prefs.getUChar("gatt-schema", 0) != 4) {
+    if (prefs.getUChar("gatt-schema", 0) != 6) {
         server->sendServiceChangedIndication();
-        if (prefs.putUChar("gatt-schema", 4) != 1) Serial.println("[settings] Could not save GATT schema marker.");
+        if (prefs.putUChar("gatt-schema", 6) != 1) Serial.println("[settings] Could not save GATT schema marker.");
     }
     Lock lock; advertise();
     Serial.printf("[settings] ready; BOOT GPIO%d, owner=%s\n", HUD_SETTINGS_BOOT_PIN, state.owned ? "saved" : "none");
@@ -347,10 +364,11 @@ void hud_ble_settings_poll() {
     }
     if (timed_out != BLE_HS_CONN_HANDLE_NONE) server->disconnect(timed_out);
     hud_ble_ota_poll();
+    hud_ble_cams_poll();
 }
 bool hud_ble_gateway_security_begin() {
     Lock lock;
-    if (gateway_security || reset_pending || phone_handle != BLE_HS_CONN_HANDLE_NONE || server->getConnectedCount() || hud_ble_ota_busy()) return false;
+    if (gateway_security || reset_pending || phone_handle != BLE_HS_CONN_HANDLE_NONE || server->getConnectedCount() || hud_ble_ota_busy() || hud_ble_cams_busy()) return false;
     gateway_security = true;
     NimBLEDevice::getAdvertising()->stop();
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_KEYBOARD_ONLY);

@@ -5,10 +5,22 @@
 #define HUD_CONFIG_H
 
 /* Внутренняя версия прошивки: major.minor.fix. */
-#define HUD_FW_VERSION_MAJOR  29
-#define HUD_FW_VERSION_MINOR  1
-#define HUD_FW_VERSION_FIX    3
-#define HUD_FW_VERSION_STRING "29.1.3"
+#define HUD_FW_VERSION_MAJOR  31
+#define HUD_FW_VERSION_MINOR  0
+#define HUD_FW_VERSION_FIX    0
+#define HUD_FW_VERSION_STRING "31.0.0"
+
+/* ---- Платформа автомобиля ----
+   HUD_PLATFORM_MLB_EVO — Audi A4 B9 и другие MLB-Evo (I-CAN, 500 кбит/с)
+   HUD_PLATFORM_MQB     — VAG MQB (проверено только на Octavia A7 до рестайлинга
+                          с Virtual Cockpit): ACC берётся из 0x2A7 / 0x30C,
+                          кадров 0x2A6 / 0x2A8 / 0x2A9 / 0x64F на шине нет.
+   Выбор: здесь или флагом сборки -DHUD_PLATFORM=HUD_PLATFORM_MQB. */
+#define HUD_PLATFORM_MLB_EVO 1
+#define HUD_PLATFORM_MQB     2
+#ifndef HUD_PLATFORM
+#define HUD_PLATFORM         HUD_PLATFORM_MLB_EVO
+#endif
 
 /* ---- Источник данных ----
    HUD_SRC_BLE  — сырые CAN-кадры от сниффера / BLE-гейта по BLE (протокол ACL)
@@ -79,14 +91,36 @@
 #define HUD_BRIGHT_NO_DATA    170    /* пока нет данных о яркости (и без связи)       */
 #define HUD_BRIGHT_STEP       4      /* плавность: шаг изменения за 50 мс             */
 
-/* ---- Опциональный датчик света: фоторезистор на ADC1 GPIO10 ----
-   Фоторезистор подключается к 3V3 и GPIO10, резистор 10 кОм — от GPIO10 к GND,
-   конденсатор 100 нФ — GPIO10 к GND. Используется только без свежего RLS_01. */
-#define HUD_LDR_PIN           10
+/* ---- Опциональный датчик света: фоторезистор на пине HUD_LDR_PIN ----
+   Фоторезистор подключается к 3V3 и HUD_LDR_PIN, резистор 10 кОм — от пина к GND,
+   конденсатор 100 нФ — пин к GND. Используется только без свежего RLS_01.
+   GPIO10–13 заняты под W25Q128, GPIO7 — динамик; по умолчанию пин GPIO14 (ADC2,
+   подходит: Wi-Fi в проекте не используется). Укажите свой выведенный пин. */
+#define HUD_LDR_PIN           14
 #define HUD_LDR_ON            0
 #define HUD_LDR_DARK_MV       150
 #define HUD_LDR_BRIGHT_MV     2500
 #define HUD_LDR_MIN_SPAN_MV   300
+
+/* ---- Камеры фиксации скорости (GNSS машины из I-CAN: NavPos_01 0x486, NavData_01 0x484) ----
+   База cams.bin (tools/gen_cams.py) хранится во флеш-памяти W25Q128 (см. HUD_FLASH_* в user_config.h)
+   и при старте целиком читается в PSRAM. Нет флеши или базы — функция молча не работает.
+   Показывается на месте знака: круглый знак ограничения камеры, значок камеры, расстояние.
+   Значения ниже — настройки по умолчанию; включение камер и сигнала меняется setter-ами
+   hud_set_cams() / hud_set_cam_beep(). */
+#define HUD_CAMS                  1
+#define HUD_CAMS_ON               1      /* камеры показываются по умолчанию */
+#define HUD_CAM_TYPE_MASK         0x001  /* какие типы камер: бит = индекс типа в cams.bin.
+                                            0 = стационарные камеры, 8 = посты ДПС, остальные — см. tools/gen_cams.py */
+#define HUD_CAM_AHEAD_S           12     /* окно оповещения: секунд хода...                    */
+#define HUD_CAM_MIN_M             200    /* ...но не меньше, м                                 */
+#define HUD_CAM_MAX_M             600    /* ...и не больше, м                                  */
+#define HUD_CAM_CROSS_M           35     /* допуск от оси движения, м                          */
+#define HUD_CAM_DIR_DEG           50     /* допуск по направлению камеры, °                    */
+#define HUD_CAM_MIN_SPEED_KMH     15     /* ниже — не оповещаем (курс GNSS неточен)            */
+#define HUD_CAM_MAX_HDOP_X10      40     /* HDOP хуже 4.0 — позиции не верим                   */
+#define HUD_CAM_BEEP              1      /* один сигнал при появлении камеры, если скорость выше её лимита */
+#define HUD_CAM_OVERSPEED_M       250    /* ближе — лимит камеры участвует в окраске цифр скорости */
 
 /* ---- Язык и единицы ----
    Настройки задаются здесь и применяются при каждой загрузке. */
@@ -126,9 +160,9 @@
 #define HUD_VZE_SIGNS             1      /* знаки VZE_01   */
 #define HUD_PSD_LEGAL_DELAY_MS    1000   /* задержка смены «явный знак» -> «по правилам»      */
 #define HUD_SIGN_CYCLE_MS         1000   /* несколько знаков — по очереди, каждый столько мс  */
-/* Допуск превышения, км/ч. Обводка цифр скорости начинает проявляться при
-   превышении HUD_OVERSPEED_START % допуска и становится полностью красной
-   на 100 % (по умолчанию: 15 км/ч сверх знака — появляется, 20 — красная). */
+/* Допуск превышения, км/ч. Цифры скорости начинают плавно краснеть при
+   превышении HUD_OVERSPEED_START % допуска и становятся полностью красными
+   на 100 % (по умолчанию: 15 км/ч сверх знака — краснеть начинают, 20 — красные). */
 #define HUD_OVERSPEED_TOL_KMH     20     /* начальный допуск, 0..100 км/ч; затем BLE/NVS */
 #define HUD_OVERSPEED_START       75     /* % допуска */
 

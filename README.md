@@ -1,4 +1,4 @@
-# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v30.0.0
+# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.0.0
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
@@ -6,11 +6,11 @@ A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, sp
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v30.0.0. Android app: 1.4.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt v30.0.0 app firmware and Android 1.4.1 APKs are available in Releases below.
+**Firmware: v31.0.0. Android app: 1.4.2.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.4.1 APKs are available there too.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v30.0.0 / Android app 1.4.1 (versionCode 5)**.
+Source versions: **HUD firmware v31.0.0 / Android app 1.4.2 (versionCode 6)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
@@ -18,6 +18,22 @@ Source versions: **HUD firmware v30.0.0 / Android app 1.4.1 (versionCode 5)**.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
 These controls need **app 1.4.1 + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+
+## v31.0.0 changes
+
+- Display: new asynchronous SPI DMA output (`HUD_LCD_ASYNC_DMA`, on by default). Two draw buffers let LVGL render the next strip while the previous one is still being sent. Set it to 0 to return to the old blocking path. `HUD_LCD_DMA_SPI_HZ` sets the clock (default 20 MHz; try 40 MHz only after checking the picture), `HUD_PERF_LOG` prints render/transfer timings to Serial.
+- Sound: optional speaker on GPIO7 through a BC547 (`hud_sound`): short beep, double beep, rising chirp and warning pattern. Plays a chirp at start-up (`HUD_SOUND_STARTUP`).
+- Pins: GPIO10–13 are reserved for a W25Q128 flash on its own SPI bus (powered from 3V3_D, like the display). The optional light sensor moves to `HUD_LDR_PIN` (default GPIO14, ADC2).
+- Wiring diagrams: the `new_pins` drawings (EN/RU) now show the speaker, the W25Q128 and the light sensor.
+- Navigation: arrows and roads are taken from the Waveshare project (`tools/gen_nav_images.py`, native 192 × 116 area). The side distance bar is removed and its space is used by the larger arrow area. The distance to the manoeuvre now stands on the level of the ACC speed. The road is empty when the manoeuvre is far and fills with the standard grey from the bottom up as the car approaches (same `bargraph` data the bar used). The camera distance uses the larger route font, written without a space (`330м` / `330m`).
+- Speed cameras: GPS position and heading come from the car's CAN (NavPos_01 0x486, NavData_01 0x484). The database `cams.bin` (from `gen_cams.py`) lives in the W25Q128 flash and is loaded into PSRAM at start-up; `cam_alert` finds the nearest camera ahead by binary search, no index file is needed. The sign (yellow square, limit disc, camera icon, distance) and the speed-digit colouring follow the Waveshare design; a warning sound plays when the speed is over the camera limit (`HUD_CAMS`, `HUD_CAM_*` in `hud_config.h`).
+- Camera display, camera warning sound and sound volume (0–100 %, 0 = silent) are switchable from the Android app (new BLE settings `…000D`, `…000E`, `…000F`, kept in NVS).
+- Camera database upload from the Android app over BLE, streamed with automatic resume and no restart: `docs/CAMS_UPLOAD.md`. Needs app **1.5.0**.
+
+## v30.0.1 changes
+
+- One version source: the boot banner uses `HUD_FW_VERSION_STRING` from `hud_config.h` (it used to disagree with the README).
+- Documentation: OTA guides updated to v30.0 / app 1.4.1; real-device OTA is confirmed (see below).
 
 ## v30.0.0 rendering changes
 
@@ -35,11 +51,11 @@ Photo supplied by WARMW00D: speed, gear, speed-limit sign, navigation and fuel i
 
 [v30.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v30.0.0) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/HUD-SuperMini-v30.0.0-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/SHA256SUMS-v30.0.0.txt).
 
-Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum and SHA-256 were verified. **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; this app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. Real-device OTA transfer has not been verified here.
+Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum and SHA-256 were verified. **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; this app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. BLE OTA transfer to the HUD has been confirmed on the real device by the maintainer.
 
 ## Download Android APK
 
-[Version 1.4.1](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release**, pending real-device OTA validation.
+[Version 1.4.1](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.4.1) — **Pre-release** on GitHub; real-device OTA has been confirmed by the maintainer.
 
 - [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-release.apk) — normal installation.
 - [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.4.1/HUD-Control-1.4.1-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.4.1-debug.apk`.
@@ -56,7 +72,7 @@ WARMW00D supplied these builds: version 1.4.1 (versionCode 5). APK v2 signatures
 | Lane / Side Assist | Lane detection, steering and warnings; red lines for blind-spot indications |
 | Traffic signs | Main sign: valid VZE → explicit PSD → PSD legal limit; additional signs cycle |
 | Overspeed | Speed digits fade smoothly from white to red near the displayed main limit |
-| Navigation | Main maneuver, next maneuver, distance, progress bar, destination distance and time |
+| Navigation | Main maneuver, next maneuver, distance, progress as road fill, destination distance and time |
 | Doors / pre sense | Open vehicle parts replace navigation; pre sense has higher priority |
 | Turn signals | Green arrows; hazard lights use red |
 | Fuel | Amount to fill and consumption strip when the required data is available |
@@ -148,14 +164,14 @@ Put `supermini_hud/config/lv_conf.h` next to the installed `lvgl/` directory. Re
 
 **Upgrading v28.x → v30.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
 
-Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v30.0.0 / BLE OTA` and a next-slot capacity of 2031616.
+Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.0.0 / BLE OTA` and a next-slot capacity of 2031616.
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 
 
 ### Optional photoresistor light sensor
 
-The SuperMini can use an optional photoresistor divider on **GPIO10 (ADC1)** when RLS_01 light data is unavailable. Connect the LDR from 3V3 to GPIO10, a 10 kΩ resistor from GPIO10 to GND, and optionally 100 nF from GPIO10 to GND. Calibration is available in the Android app: close the sensor and save the dark point once, then illuminate it with a bright flashlight and save the bright point once.
+The SuperMini can use an optional photoresistor divider on **`HUD_LDR_PIN`** (default GPIO14, ADC2; GPIO10–13 are reserved for the W25Q128, GPIO7 for the speaker) when RLS_01 light data is unavailable. Connect the LDR from 3V3 to that pin, a 10 kΩ resistor from it to GND, and optionally 100 nF from it to GND. Calibration is available in the Android app: close the sensor and save the dark point once, then illuminate it with a bright flashlight and save the bright point once.
 
 ![Photoresistor divider](schematics/HUD_light_sensor_divider_supermini_en.svg)
 
@@ -197,9 +213,34 @@ For bench testing, use `HUD_SRC_FAKE` or a compatible BLE log player. Enable `HU
 | OTA service absent | Install v30.0 over USB; reconnect after Service Changed; check slot capacity |
 | App reconnect fails after removing Android bond | Reset phone ownership with BOOT, then pair again |
 
+## Vehicle platform: MLB-Evo and MQB
+
+`HUD_PLATFORM` in `hud_config.h` (or `-DHUD_PLATFORM=HUD_PLATFORM_MQB`) selects the signal map: `HUD_PLATFORM_MLB_EVO` (default, Audi A4 B9 and other MLB-Evo, tested) or `HUD_PLATFORM_MQB` (VAG MQB, early community support). Everything not tied to the bus (UI, cameras, menu, OTA) is shared. The ACL list for the sniffer/gateway and the decoder follow the selected platform.
+
+MQB was checked only with logs from one Skoda Octavia A7 (pre-facelift, retrofitted Virtual Cockpit), replayed through the BLE player; the cluster itself was not recorded, so ⚠️ means a hypothesis from the log.
+
+| Signal | MLB-Evo | MQB | MQB status |
+|---|---|---|---|
+| Speed, gear, turn signals, doors, speed-limit signs (VZE), Side Assist | same frames | same frames | works on replay |
+| ACC active | `0x2A8` 16\|3 | `0x2A7` bit 58 | ⚠️ matches `0x30C` bit 61 in time |
+| ACC set speed | `0x2A6` 12\|10, ×0.32 km/h | `0x30C` 16\|6: 5·v+5 km/h, 63 = not set | ⚠️ values 5/7/9/11/19 give 30/40/50/60/100 |
+| Vehicle ahead, time gap | `0x2A6` 45\|2 / 37\|3 | `0x30C` 45\|2 / 37\|3 | ⚠️ same layout assumed |
+| ACC lane guidance, traffic-jam mode | `0x2A6` 7\|2 / 62\|2 | not decoded | missing |
+| Pre sense | `0x2A9` | frame absent | disabled |
+| Lane Assist | `0x397` | `0x397`, same decoder; ACL without rate limit (green lasts 0.1–1 s) | works; warning flags not seen in the log |
+| Brightness | `0x5F0` + light sensor `0x5A0` + wheel `0x64F` | `0x5F0` byte 0; wheel from `0x5F0` byte 2 (16\|8); `0x5A0` and `0x64F` absent | ⚠️ wheel byte seen only at 100 (lights off) |
+
+Rendered from the Octavia A7 logs through the real decoder and UI (host render of the 428×142 panel; speed-limit signs, ACC with a vehicle ahead, Lane Assist lines):
+
+![MQB screens: ACC, Lane Assist, navigation](docs/images/mqb-screens.png)
+
+![MQB speed-limit signs from VZE](docs/images/mqb-signs.png)
+
+Open for MQB contributors: confirm ACC bits against the cluster, find ACC lane guidance and traffic-jam mode, light sensor and wheel behaviour with the lights on, navigation arrows (BAP differs from MLB-Evo), and a two-bus (Powertrain/Comfort) data path.
+
 ## Validation status
 
-WARMW00D supplied the v30.0.0 ESP32-S3 application BIN and Android v1.4.1 APKs. Firmware image checksum/SHA-256 and APK signatures/content digests were verified. Host tests pass. Builds were not run here; Android lint and real-device OTA transfer testing remain pending.
+WARMW00D supplied the v30.0.0 ESP32-S3 application BIN and Android v1.4.1 APKs. Firmware image checksum/SHA-256 and APK signatures/content digests were verified. Host tests pass. Builds were not run here; Android lint has not been run. The maintainer confirmed BLE OTA on the real device.
 
 Host tests cover real SHA-256 through OpenSSL with mocked NimBLE/ESP-IDF: full transfer, commit only after verification, invalid size/header/chip/hash, flash failures, offsets, cancel/disconnect/timeout, owner authorization, duplicate commit and lost final ACK. Display scaling, dirty strips, decoder and settings/NVS also have host tests. Mocks do not establish real BLE interoperability or flash reliability.
 

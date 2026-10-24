@@ -3,7 +3,7 @@
 #include "lvgl.h"
 #include "../../user_config.h"
 /* Convert authored positions on setters only. Pixels are never resized in flush.
-   Signed rounding preserves negative offsets used by the speed outline. */
+   Signed rounding preserves negative offsets. */
 static inline lv_coord_t hud_native_round(int value, int dst, int src) {
     return value < 0 ? -((-value * dst + src / 2) / src)
                      : (value * dst + src / 2) / src;

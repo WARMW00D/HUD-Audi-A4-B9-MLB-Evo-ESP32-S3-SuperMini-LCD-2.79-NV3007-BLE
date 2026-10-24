@@ -38,11 +38,12 @@
 #define TO_BC      60000
 #define TO_RLS     1500
 #define TO_SWA     1000
+#define TO_GPS     1500    /* NavPos_01 / NavData_01: 5 Гц */
 #define TO_WHEEL   3000    /* BCM1_04: раз в 1 с в покое, 50-60 мс при вращении */   /* BAP_BC: 0x18 раз в ~4 с при изменении, остальное — heartbeat ~25 с */
 
-enum { S_SPEED, S_ACC, S_GEAR, S_BLINK, S_SIGN, S_MAN, S_MDIST, S_DEST, S_TTE, S_LKA, S_DOORS, S_HOOD, S_GNUM, S_JAM, S_LIM, S_AWV, S_DIM, S_ACCEL, S_SPDACC, S_BRAKE, S_FUEL, S_RESERVED21, S_BC, S_BCFUEL, S_RLS, S_WHEEL, S_SWA, S_COUNT };
+enum { S_SPEED, S_ACC, S_GEAR, S_BLINK, S_SIGN, S_MAN, S_MDIST, S_DEST, S_TTE, S_LKA, S_DOORS, S_HOOD, S_GNUM, S_JAM, S_LIM, S_AWV, S_DIM, S_ACCEL, S_SPDACC, S_BRAKE, S_FUEL, S_RESERVED21, S_BC, S_BCFUEL, S_RLS, S_WHEEL, S_SWA, S_GPS, S_HDG, S_COUNT };
 static const uint32_t s_timeout[S_COUNT] = {
-    TO_SPEED, TO_ACC, TO_GEAR, TO_BLINK, TO_SIGN, TO_NAV, TO_NAV, TO_NAV, TO_NAV, TO_LKA, TO_DOORS, TO_HOOD, TO_GNUM, TO_JAM, TO_LIM, TO_AWV, TO_DIM, TO_ACCEL, TO_SPDACC, TO_BRAKE, TO_FUEL, TO_RESERVED21, TO_BC, TO_BC, TO_RLS, TO_WHEEL, TO_SWA
+    TO_SPEED, TO_ACC, TO_GEAR, TO_BLINK, TO_SIGN, TO_NAV, TO_NAV, TO_NAV, TO_NAV, TO_LKA, TO_DOORS, TO_HOOD, TO_GNUM, TO_JAM, TO_LIM, TO_AWV, TO_DIM, TO_ACCEL, TO_SPDACC, TO_BRAKE, TO_FUEL, TO_RESERVED21, TO_BC, TO_BC, TO_RLS, TO_WHEEL, TO_SWA, TO_GPS, TO_GPS
 };
 
 static HudData      s_data;
@@ -404,7 +405,11 @@ void hud_data_fake_doors(uint8_t mask)
 }
 
 /* ---------- диагностика: счётчики кадров по ID ---------- */
-static const uint16_t s_dbg_ids[] = { 0x30B, 0x2A6, 0x2A8, 0x31E, 0x394, 0x366, 0x181, 0x397, 0x583, 0x65A, 0x2A9, 0x5F0, 0x5A0, 0x64F, 0x30F, 0x101, 0x462, 0x463, 0x464 };
+#if HUD_PLATFORM == HUD_PLATFORM_MQB
+static const uint16_t s_dbg_ids[] = { 0x30B, 0x2A7, 0x30C, 0x31E, 0x394, 0x366, 0x181, 0x397, 0x583, 0x65A, 0x5F0, 0x5A0, 0x30F, 0x101, 0x462, 0x463, 0x464, 0x486, 0x484 };
+#else
+static const uint16_t s_dbg_ids[] = { 0x30B, 0x2A6, 0x2A8, 0x31E, 0x394, 0x366, 0x181, 0x397, 0x583, 0x65A, 0x2A9, 0x5F0, 0x5A0, 0x64F, 0x30F, 0x101, 0x462, 0x463, 0x464, 0x486, 0x484 };
+#endif
 #define DBG_N (sizeof(s_dbg_ids) / sizeof(s_dbg_ids[0]))
 static uint32_t s_dbg_cnt[DBG_N];
 static uint8_t  s_dbg_last[DBG_N][8];
@@ -488,6 +493,22 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
     case 0x107: /* Motor_04 — ⚠️ из opendbc MLB, на I-CAN не проверено */
         fuel_update((uint16_t)sig(d, 48, 15));
         break;
+#if HUD_PLATFORM == HUD_PLATFORM_MQB
+    case 0x2A7: /* MQB: ACC активен — бит 58 (⚠️ гипотеза по совпадению интервалов, Octavia A7) */
+        s_data.acc_status = sig(d, 58, 1) ? 3 : 2;           /* 3 активен, 2 ожидание */
+        touch(S_ACC);
+        break;
+    case 0x30C: { /* MQB: ACC_02 — заданная скорость 16|6: км/ч = 5·v+5, 63 = не задана (⚠️) */
+        uint32_t v = sig(d, 16, 6);
+        s_data.acc_set_raw = (v == 63) ? 0x3FF : (uint16_t)((((v * 5u + 5u) * 100u) + 16u) / 32u);   /* км/ч -> ×0.32 */
+        /* Машина впереди: 45|2 — как в ACC_12 на A4 (в активном ACC на Октавии 94 % кадров = 1,
+           остальные 0; ⚠️ по совпадению с раскладкой A4, не по документации). Зазор 37|3. */
+        s_data.acc_object = sig(d, 45, 2);
+        s_data.acc_gap    = sig(d, 37, 3);
+        touch(S_ACC);
+        break;
+    }
+#else
     case 0x2A6: /* ACC_12 */
         s_data.acc_set_raw    = sig(d, 12, 10);
         s_data.acc_tempolimit = sig(d, 0, 5);
@@ -502,6 +523,7 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
         s_data.acc_status = sig(d, 16, 3);
         touch(S_ACC);
         break;
+#endif
     case 0x394: /* WBA_03 */
         s_data.gear = sig(d, 12, 4);
         touch(S_GEAR);
@@ -545,16 +567,23 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
         s_data.limiter_raw = sig(d, 12, 10);
         touch(S_LIM);
         break;
+#if HUD_PLATFORM != HUD_PLATFORM_MQB
     case 0x2A9: /* ACC_15: AWV (Audi pre sense front) — ⚠️ раскладка из opendbc MQB,
                    на I-CAN MLB-Evo не проверено */
         s_data.awv_warn = sig(d, 16, 3);
         touch(S_AWV);
         break;
+#endif
     case 0x5F0: /* Dimmung_01 — DI_KL_58xd 0|8 (%), Nachtdesign 15 — проверено по логу 0003 */
         s_data.dim_raw   = sig(d, 0, 8);
         s_data.dim_pct   = sig(d, 8, 7);
         s_data.dim_night = sig(d, 15, 1);
         touch(S_DIM);
+#if HUD_PLATFORM == HUD_PLATFORM_MQB
+        /* MQB: колёсика 0x64F на шине нет; регулятор подсветки — байт 2 (16|8), в логе Октавии
+           стоял на 100 при выключенных фарах (⚠️ подтверждено водителем, движение не записано) */
+        { uint8_t w = sig(d, 16, 8); if (w >= 1 && w <= 100) { s_data.wheel_pct = w; touch(S_WHEEL); } }
+#endif
         break;
     case 0x5A0: /* RLS_01 — датчик света и дождя (K-матрица I-CAN, поездки 0006/0010) */
         s_data.rls_ir    = sig(d, 0, 8);
@@ -563,14 +592,31 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
         s_data.rls_boost = sig(d, 35, 4);
         touch(S_RLS);
         break;
+    case 0x486: { /* NavPos_01 (проверено по логу 09.10): 0|27 широта, 27|28 долгота ×1e-6, 55 юг, 56 запад, 57|5 спутники, 62|2 фикс */
+        int32_t la = (int32_t)sig(d, 0, 27), lo = (int32_t)sig(d, 27, 28);
+        s_data.gps_lat_e6 = sig(d, 55, 1) ? -la : la;
+        s_data.gps_lon_e6 = sig(d, 56, 1) ? -lo : lo;
+        s_data.gps_sat = sig(d, 57, 5);
+        s_data.gps_fix = sig(d, 62, 2);
+        touch(S_GPS);
+        break; }
+    case 0x484: { /* NavData_01: 20|10 HDOP ×0.025, 50|12 курс ×0.1 (409.4 — нет) */
+        uint32_t h = sig(d, 50, 12);
+        s_data.gps_hdg_x10 = h < 3600 ? (uint16_t)h : 0xFFFF;
+        uint32_t hd = sig(d, 20, 10) * 25 / 100;                       /* x10 */
+        s_data.gps_hdop_x10 = hd > 255 ? 255 : (uint8_t)hd;
+        touch(S_HDG);
+        break; }
     case 0x30F: /* SWA_01 — Side Assist (opendbc MLB/MQB; ⚠️ на I-CAN проверить) */
         s_data.swa_info = (uint8_t)(sig(d, 26, 1) | (sig(d, 42, 1) << 1));   /* Infostufe_SWA_li / _re */
         s_data.swa_warn = (uint8_t)(sig(d, 27, 1) | (sig(d, 43, 1) << 1));   /* Warnung_SWA_li / _re   */
         touch(S_SWA);
         break;
+#if HUD_PLATFORM != HUD_PLATFORM_MQB
     case 0x64F: /* BCM1_04 — положение колёсика подсветки (лог 0003) */
         { uint8_t w = sig(d, 25, 7); if (w >= 1 && w <= 100) { s_data.wheel_pct = w; touch(S_WHEEL); } }
         break;
+#endif
     case 0x583: /* ZV_02 */
         decode_zv02(d);
         touch(S_DOORS);

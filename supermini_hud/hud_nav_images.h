@@ -3,12 +3,12 @@
 #define HUD_NAV_IMAGES_H
 #include "lvgl.h"
 
-#define NAV_AREA_W 128
+#define NAV_AREA_W 192
 #define NAV_AREA_H 116
 #define NAV_SMALL_W 25
 #define NAV_SMALL_H 15
 
-typedef struct { const lv_img_dsc_t *img; int16_t x, y; const lv_img_dsc_t *road; int16_t rx, ry; } NavImg;   /* стрелка и отдельный дорожный слой */
+typedef struct { const lv_img_dsc_t *img; int16_t x, y; const lv_img_dsc_t *road; int16_t rx, ry; const lv_img_dsc_t *roado; int16_t ox, oy; } NavImg;   /* стрелка и отдельный дорожный слой */
 
 /* Набор стрелок: turn[16] — сектор 0..15 (22.5 град, против часовой от 'прямо'),
    round[16] — кольцо, сектор съезда; exit/fork/uturn: [0] налево, [1] направо */

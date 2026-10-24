@@ -31,6 +31,10 @@ void    hud_set_overspeed_tol(uint8_t kmh);
 uint8_t hud_get_overspeed_tol(void);
 void    hud_set_accel_bar(bool on);    /* бар ускорения вкл/выкл                        */
 bool    hud_get_accel_bar(void);
+void    hud_set_cams(bool on);         /* камеры: показ (HUD_CAMS) */
+bool    hud_get_cams(void);
+void    hud_set_cam_beep(bool on);     /* камеры: сигнал */
+bool    hud_get_cam_beep(void);
 
 
 #ifdef __cplusplus

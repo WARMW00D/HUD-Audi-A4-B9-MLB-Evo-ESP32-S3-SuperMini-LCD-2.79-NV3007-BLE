@@ -21,6 +21,7 @@ public:
 };
 class HudOtaCore {
     HudOtaStorage &storage;
+    const bool esp_image_;      // true: OTA of an ESP32-S3 app; false: camera database "CAM1"
     HudOtaState state_ = HudOtaState::Idle;
     HudOtaError error_ = HudOtaError::None;
     uint32_t total_ = 0, received_ = 0;
@@ -29,7 +30,7 @@ class HudOtaCore {
         storage.abort(); state_=HudOtaState::Error; error_=error;
     }
 public:
-    explicit HudOtaCore(HudOtaStorage &backend) : storage(backend) {}
+    explicit HudOtaCore(HudOtaStorage &backend, bool esp_image=true) : storage(backend), esp_image_(esp_image) {}
     static uint32_t get32(const uint8_t *p) {
         return uint32_t(p[0]) | uint32_t(p[1])<<8 | uint32_t(p[2])<<16 | uint32_t(p[3])<<24;
     }
@@ -56,7 +57,7 @@ public:
             cancel(); total_=get32(data+1); memcpy(digest_,data+5,32);
             const uint32_t capacity=storage.capacity();
             if (!capacity) { fail(HudOtaError::NoPartition); return; }
-            if (total_<36 || total_>capacity) { fail(HudOtaError::Size); return; }
+            if (total_<(esp_image_ ? 36u : 28u) || total_>capacity) { fail(HudOtaError::Size); return; }
             if (!storage.begin(total_)) { fail(HudOtaError::Storage); return; }
             state_=HudOtaState::Receiving;
         } else if (size!=1) fail(HudOtaError::Protocol);
@@ -77,15 +78,27 @@ public:
         if (state_==HudOtaState::Committed) return;
         if (state_!=HudOtaState::Receiving) { fail(HudOtaError::State); return; }
         if (!data || size<=4 || size>244) { fail(HudOtaError::Protocol); return; }
-        if (get32(data)!=received_) { fail(HudOtaError::Offset); return; }
+        if (get32(data)!=received_) {
+            // Camera upload streams unacknowledged packets: a gap or duplicate is dropped and the
+            // phone resumes from the "received" field of the status. OTA stays strict.
+            if (!esp_image_) return;
+            fail(HudOtaError::Offset); return;
+        }
         const size_t n=size-4;
         if (n>total_-received_) { fail(HudOtaError::Size); return; }
         if (received_==0) {
-            // Raw application image, ESP32-S3 chip ID 9, application descriptor.
-            // A merged image, another chip or a bootloader is rejected before writing.
             const uint8_t *p=data+4;
-            if (n<36 || p[0]!=0xe9 || p[12]!=9 || p[13]!=0 || get32(p+32)!=0xabcd5432) {
-                fail(HudOtaError::Image); return;
+            if (esp_image_) {
+                // Raw application image, ESP32-S3 chip ID 9, application descriptor.
+                // A merged image, another chip or a bootloader is rejected before writing.
+                if (n<36 || p[0]!=0xe9 || p[12]!=9 || p[13]!=0 || get32(p+32)!=0xabcd5432) {
+                    fail(HudOtaError::Image); return;
+                }
+            } else {
+                // cams.bin: "CAM1", count, date, reserved, 12-byte records.
+                if (n<16 || memcmp(p,"CAM1",4)!=0 || total_!=16u+12u*get32(p+4)) {
+                    fail(HudOtaError::Image); return;
+                }
             }
         }
         if (!storage.write(data+4,n)) { fail(HudOtaError::Storage); return; }

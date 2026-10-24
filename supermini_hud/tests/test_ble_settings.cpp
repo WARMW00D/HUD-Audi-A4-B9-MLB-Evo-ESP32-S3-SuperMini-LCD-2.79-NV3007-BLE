@@ -2,6 +2,11 @@
 #include <cassert>
 #include <cstdio>
 #include "../hud_ble_ota.cpp"
+extern "C" uint32_t hud_cams_max_db_bytes(void){return 1<<20;}
+extern "C" bool hud_cams_flash_erase(uint32_t){return true;}
+extern "C" bool hud_cams_flash_write(uint32_t,const uint8_t*,size_t){return true;}
+extern "C" bool hud_cams_reload(const uint8_t*,size_t){return true;}
+#include "../hud_ble_cams.cpp"
 #include "../hud_ble_settings.cpp"
 static uint8_t live[8];
 extern "C" void hud_set_psd(bool b){live[0]=b;}
@@ -12,6 +17,12 @@ extern "C" void hud_set_gallons(bool b){live[4]=b;}
 extern "C" void hud_set_tank_l(uint8_t v){live[5]=v;}
 extern "C" void hud_set_accel_bar(bool b){live[6]=b;}
 extern "C" void hud_set_overspeed_tol(uint8_t v){live[7]=v;}
+static uint8_t test_volume=100; static int test_beeps;
+extern "C" void hud_sound_set_volume(uint8_t v){test_volume=v;}
+extern "C" void hud_sound_play(hud_sound_t){++test_beeps;}
+static bool test_cams=true, test_cam_beep=true;
+extern "C" void hud_set_cams(bool on){test_cams=on;}
+extern "C" void hud_set_cam_beep(bool on){test_cam_beep=on;}
 static bool test_light_enabled; static int test_dark_mv = 150, test_bright_mv = 2500, test_sample_mv = 1200;
 extern "C" bool hud_light_enabled(void){return test_light_enabled;}
 extern "C" void hud_light_set_enabled(bool on){test_light_enabled=on;}
@@ -34,6 +45,9 @@ int main(){
  for(unsigned i=0;i<5;i++){write(i,1,a);assert(live[i]==1);write(i,0,a);assert(live[i]==0);}
  assert(live[7]==20);for(uint8_t tol : {0,1,20,100}){write(7,tol,a);assert(live[7]==tol);}
  write(8,1,a); assert(test_light_enabled); write(9,1,a); assert(test_dark_mv==test_sample_mv); write(10,1,a); assert(test_bright_mv==test_sample_mv);
+ write(11,0,a); assert(!test_cams); write(11,1,a); assert(test_cams); write(12,0,a); assert(!test_cam_beep); write(12,1,a); assert(test_cam_beep);
+ write(11,2,a); assert(test_cams); prefs.fail=true; write(11,0,a); assert(test_cams); prefs.fail=false;
+ write(13,40,a); assert(test_volume==40 && test_beeps==1); write(13,0,a); assert(test_volume==0); write(13,101,a); assert(test_volume==0); write(13,100,a); assert(test_volume==100);
  write(7,101,a);write(7,255,a);assert(live[7]==100);
  prefs.fail=true;write(7,10,a);assert(live[7]==100);prefs.fail=false;write(7,35,a);
  for(uint8_t capacity : {1,54,63,128,200}) {write(5,capacity,a);assert(live[5]==capacity);}

@@ -35,6 +35,9 @@
 #include "hud_nav_images.h"
 #include "hud_source.h"
 #include "psd_speedlimit.h"
+#include "cam_alert.h"
+#include "hud_cams.h"
+#include "hud_sound.h"
 #include "src/lcd_bl_bsp/lcd_bl_pwm_bsp.h"
 
 /* Шрифты: Montserrat Bold (SIL OFL 1.1) с табличными цифрами — см. tools/fonts/ */
@@ -96,8 +99,7 @@ static lv_obj_t *ps_box, *ps_tri;           /* предупреждение pre 
 #define ACC_GAP_MID  3
 #define ACC_Y        (172 - ACC_SQ)   /* самый низ экрана, подальше от дистанции до манёвра */
 static lv_obj_t *acc_sq[2][ACC_SEG];
-static lv_obj_t *arrow_ph, *arrow_road, *arrow_img, *arrow_lbl, *nav_dist_lbl, *next_img;
-static lv_obj_t *bar_seg[16];
+static lv_obj_t *arrow_ph, *road_outline, *road_clip, *arrow_road, *arrow_img, *arrow_lbl, *nav_dist_lbl, *next_img;
 static lv_obj_t *route_icon, *route_lbl;
 static lv_obj_t *speed_lbl;
 static lv_obj_t *acc_dot, *acc_speed_lbl;   /* acc_dot — значок установки скорости ACC */
@@ -211,6 +213,96 @@ static volatile uint8_t g_tank_l = HUD_TANK_L;
 static volatile uint8_t g_speed_tol = HUD_OVERSPEED_TOL_KMH;
 void hud_set_overspeed_tol(uint8_t kmh) { if (kmh <= 100) g_speed_tol = kmh; }
 uint8_t hud_get_overspeed_tol(void) { return g_speed_tol; }
+
+/* ---------- камеры фиксации скорости (HUD_CAMS): знак на месте обычного знака ---------- */
+static volatile bool g_cams_on  = HUD_CAMS_ON;
+static volatile bool g_cam_beep = HUD_CAM_BEEP;
+void    hud_set_cams(bool on)        { g_cams_on = on; }
+bool    hud_get_cams(void)           { return g_cams_on; }
+void    hud_set_cam_beep(bool on)    { g_cam_beep = on; }
+bool    hud_get_cam_beep(void)       { return g_cam_beep; }
+#if HUD_CAMS
+static lv_obj_t *car_img(lv_obj_t *parent, const lv_img_dsc_t *src, int x, int y, uint32_t col);
+static lv_obj_t *cm_sq, *cm_disc, *cm_lim, *cm_dist, *cm_eye;
+
+/* Знак камеры — того же размера, что обычный знак (64), самый приоритетный: круглый знак
+   ограничения (Ø52, кольцо 6) на жёлтом квадрате, под ним значок камеры со вспышкой и расстояние. */
+static void cams_build(lv_obj_t *scr, int lx)
+{
+    cm_sq = lv_obj_create(scr);
+    hud_native_set_size(cm_sq, SIGN_D, SIGN_D); hud_native_set_pos(cm_sq, lx + 1, 2);
+    lv_obj_set_style_radius(cm_sq, hud_native_metric(6), 0);
+    lv_obj_set_style_bg_color(cm_sq, lv_color_hex(C_YELLOW), 0);
+    lv_obj_set_style_border_width(cm_sq, 0, 0);
+    lv_obj_set_style_pad_all(cm_sq, 0, 0);
+    lv_obj_clear_flag(cm_sq, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+    cm_disc = lv_obj_create(cm_sq);
+    hud_native_set_size(cm_disc, 52, 52); hud_native_set_pos(cm_disc, 6, 6);
+    lv_obj_set_style_radius(cm_disc, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(cm_disc, lv_color_white(), 0);
+    lv_obj_set_style_border_color(cm_disc, lv_color_hex(C_SIGN_RED), 0);
+    lv_obj_set_style_border_width(cm_disc, hud_native_metric(6), 0);
+    lv_obj_set_style_pad_all(cm_disc, 0, 0);
+    lv_obj_clear_flag(cm_disc, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    cm_lim = lv_label_create(cm_disc);  lv_label_set_text(cm_lim, "");
+    lv_obj_set_style_text_font(cm_lim, &hud_font_sign2, 0);
+    lv_obj_set_style_text_color(cm_lim, lv_color_black(), 0);
+    lv_obj_center(cm_lim);
+
+    cm_eye = car_img(scr, &img_cam_icon, lx + 4, 74, C_YELLOW);
+
+    cm_dist = lv_label_create(scr);  lv_label_set_text(cm_dist, "");
+    lv_obj_set_style_text_font(cm_dist, &hud_font_route, 0);   /* крупнее прежнего (был LV_FONT_DEFAULT) */
+    lv_label_set_long_mode(cm_dist, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_color(cm_dist, lv_color_hex(C_YELLOW), 0);
+    lv_obj_set_style_text_align(cm_dist, LV_TEXT_ALIGN_LEFT, 0);
+    hud_native_set_width(cm_dist, 130); hud_native_set_pos(cm_dist, lx + 46, 79);   /* справа от значка камеры */
+
+    lv_obj_add_flag(cm_sq, LV_OBJ_FLAG_HIDDEN); lv_obj_add_flag(cm_dist, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(cm_eye, LV_OBJ_FLAG_HIDDEN);
+}
+
+/* true — камера впереди показана. *lim_for_speed уменьшается до лимита камеры вблизи неё. */
+static bool cams_update(uint32_t now, const HudData *d, uint16_t *lim_for_speed)
+{
+    static uint32_t beeped = 0xFFFFFFFFu;
+    cam_hit_t h; bool hit = false;
+    bool gate = g_cams_on && hud_cams_ready()
+             && (d->valid & V_GPS) && (d->valid & V_HDG) && (d->valid & V_SPEED)
+             && d->gps_fix == 3 && d->gps_sat >= 4 && d->gps_hdop_x10 <= HUD_CAM_MAX_HDOP_X10
+             && d->gps_hdg_x10 != 0xFFFF && d->speed_kmh >= HUD_CAM_MIN_SPEED_KMH;
+    if (gate)
+        hit = cam_query(now, d->gps_lat_e6 / 1e6, d->gps_lon_e6 / 1e6, d->gps_hdg_x10 / 10.0f, (float)d->speed_kmh, &h);
+
+    vis(cm_sq, hit); vis(cm_dist, hit); vis(cm_eye, hit);
+    if (hit) vis(sign_obj, false);                      /* знак камеры приоритетнее обычного знака */
+    if (!hit) return false;
+
+    char b[16];
+    if (g_units == HUD_UNITS_MI) snprintf(b, sizeof b, "%dft", (int)(h.dist_m * 3.281f / 50) * 50);
+    else                         snprintf(b, sizeof b, "%d%s",  (int)(h.dist_m / 10) * 10, g_lang == HUD_LANG_EN ? "m" : "м");   /* без пробела: 330м / 330m */
+    set_text(cm_dist, b);
+    if (h.limit) snprintf(b, sizeof b, "%u", h.limit); else snprintf(b, sizeof b, "?");
+    set_font(cm_lim, h.limit >= 100 ? &hud_font_sign3 : &hud_font_sign2);
+    set_text(cm_lim, b); lv_obj_center(cm_lim);
+
+    bool over = h.limit && d->speed_kmh > h.limit + g_speed_tol;
+    bool ph   = over && (now % 400) < 200;
+    set_bg_color(cm_disc, ph ? C_SIGN_WARN : 0xffffff);
+    set_img_color(cm_eye, over ? 0xff3030 : C_YELLOW);
+
+    if (h.idx != beeped) {                              /* новая камера */
+        beeped = h.idx;
+        arduino_printf("[cam] #%lu limit %u at %.0f m, v=%u, hdg %u/cam %d\n", (unsigned long)h.idx, h.limit,
+                       h.dist_m, d->speed_kmh, d->gps_hdg_x10 / 10, (int)h.dir_deg);
+        if (g_cam_beep && h.limit && d->speed_kmh > h.limit) hud_sound_play(HUD_SND_WARN);
+    }
+    if (h.limit && h.dist_m <= HUD_CAM_OVERSPEED_M && (*lim_for_speed == 0 || h.limit < *lim_for_speed))
+        *lim_for_speed = h.limit;
+    return true;
+}
+#endif
 void hud_set_tank_l(uint8_t litres) { if (litres >= 1 && litres <= 200) g_tank_l = litres; }
 uint8_t hud_get_tank_l(void) { return g_tank_l; }
 void    hud_set_gallons(bool on)     { g_gal = on; }
@@ -660,6 +752,9 @@ static void hud_update_cb(lv_timer_t *t)
         last_center_val = sval;
     }
     vis(sign_obj, smode != SIGN_HIDE);
+#if HUD_CAMS
+    cams_update(now, &d, &lim_kmh_for_speed);
+#endif
 
     /* Speed tint: white at the fade start, red at the configured tolerance.
        One label only; set_text_color skips unchanged RGB565 values. */
@@ -780,12 +875,25 @@ static void hud_update_cb(lv_timer_t *t)
             hud_native_set_pos(arrow_img, ni->x, ni->y);
             if (ni->road) {
                 lv_img_set_src(arrow_road, ni->road);
-                hud_native_set_pos(arrow_road, ni->rx, ni->ry);
+                lv_img_set_src(road_outline, ni->roado);
+                hud_native_set_pos(road_outline, ni->ox, ni->oy);
             }
         }
         ni_last = ni;
         bool calc = (d.man_main == 0x09 || d.man_main == 0x0A);
         vis(arrow_road, ni != NULL && ni->road != NULL);
+        vis(road_clip, ni != NULL && ni->road != NULL);
+        vis(road_outline, ni != NULL && ni->roado != NULL);
+        if (ni && ni->road) {
+            /* далеко — дороги нет (чёрное), по мере приближения она заливается серым снизу вверх */
+            int pct = ((d.valid & V_MDIST) && d.bargraph <= 100) ? 100 - d.bargraph : 100;   /* bargraph падает по мере приближения */
+            lv_coord_t ty = hud_native_y(ni->ry), h = (lv_coord_t)ni->road->header.h;
+            lv_coord_t cut = ty + (lv_coord_t)(((100 - pct) * h + 50) / 100);
+            lv_coord_t full = hud_native_y(166);
+            lv_obj_set_y(road_clip, cut);
+            lv_obj_set_height(road_clip, full > cut ? full - cut : 1);
+            lv_obj_set_pos(arrow_road, hud_native_x(ni->rx), ty - cut);
+        }
         vis(arrow_img, ni != NULL);
         vis(arrow_lbl, ni == NULL && calc);             /* расчёт маршрута; 0x00/0x01 — пусто */
 
@@ -818,14 +926,6 @@ static void hud_update_cb(lv_timer_t *t)
         }
         vis(nav_dist_lbl, (d.valid & V_MDIST) && ni != NULL);
         (void)calc;
-    }
-
-    int filled = -1;   /* -1 = бар скрыт */
-    if (nav && (d.valid & V_MDIST) && d.bargraph != 0xFF)
-        filled = d.bargraph * 16 / 100;
-    for (int i = 0; i < 16; i++) {
-        vis(bar_seg[i], filled >= 0);
-        if (filled >= 0) set_bg_color(bar_seg[i], i < filled ? C_BAR_ON : C_BAR_OFF);
     }
 
     bool dv = nav && (d.valid & V_DEST);
@@ -977,6 +1077,9 @@ void build_hud_mockup(void)
     lv_obj_add_flag(sign_car_r, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_pad_all(sign_obj, 0, 0);
     lv_obj_add_flag(sign_obj, LV_OBJ_FLAG_HIDDEN);
+#if HUD_CAMS
+    cams_build(scr, LX);
+#endif
 
     /* ACC / LKA */
     /* Значок ACC / Lane Assist — слои-маски, цвет каждого задаётся отдельно */
@@ -997,10 +1100,17 @@ void build_hud_mockup(void)
        до манёвра под ней. Область 128x140: стрелка уменьшена в 1.5 раза, строка — ниже. */
     arrow_ph = lv_obj_create(scr);
     lv_obj_remove_style_all(arrow_ph);
-    hud_native_set_size(arrow_ph, NAV_AREA_W, 140);
-    hud_native_set_pos(arrow_ph, LX + 132, 5);
+    hud_native_set_size(arrow_ph, NAV_AREA_W, 166);   /* до низа раскладки: строка дистанции стоит на уровне скорости ACC */
+    hud_native_set_pos(arrow_ph, LX + 122, 5);   /* v31: бар убран, область — родные 192 из Waveshare */
     lv_obj_clear_flag(arrow_ph, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    arrow_road = car_img(arrow_ph, nav_big.turn[0].road, nav_big.turn[0].rx, nav_big.turn[0].ry, C_NAV_ROAD);   /* дорожный слой под стрелкой */
+    road_outline = car_img(arrow_ph, nav_big.turn[0].roado, nav_big.turn[0].ox, nav_big.turn[0].oy, C_NAV_ROAD);   /* контур дороги — виден всегда */
+    lv_obj_add_flag(road_outline, LV_OBJ_FLAG_HIDDEN);
+    road_clip = lv_obj_create(arrow_ph);                /* обрезка дороги снизу вверх: прогресс до манёвра вместо бара */
+    lv_obj_remove_style_all(road_clip);
+    lv_obj_set_pos(road_clip, 0, 0);
+    hud_native_set_size(road_clip, NAV_AREA_W, 166);
+    lv_obj_clear_flag(road_clip, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    arrow_road = car_img(road_clip, nav_big.turn[0].road, nav_big.turn[0].rx, nav_big.turn[0].ry, C_NAV_ROAD);   /* дорожный слой под стрелкой */
     lv_obj_add_flag(arrow_road, LV_OBJ_FLAG_HIDDEN);
     arrow_img = car_img(arrow_ph, nav_big.turn[0].img, nav_big.turn[0].x, nav_big.turn[0].y, C_NAV_ARROW);
     lv_obj_add_flag(arrow_img, LV_OBJ_FLAG_HIDDEN);
@@ -1018,7 +1128,7 @@ void build_hud_mockup(void)
     lv_obj_set_style_text_color(nav_dist_lbl, lv_color_white(), 0);
     lv_obj_set_style_text_align(nav_dist_lbl, LV_TEXT_ALIGN_CENTER, 0);
     hud_native_set_width(nav_dist_lbl, NAV_AREA_W);
-    hud_native_set_pos(nav_dist_lbl, 0, NAV_AREA_H + 2);
+    hud_native_set_pos(nav_dist_lbl, 0, 146 - 5 - 4);      /* y скорости ACC (146) минус y области (5) */
     lv_obj_add_flag(nav_dist_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(arrow_ph, LV_OBJ_FLAG_HIDDEN);
 
@@ -1077,23 +1187,6 @@ void build_hud_mockup(void)
     ps_tri = car_img(ps_box, &img_presense_tri, (NAV_AREA_W - 92) / 2, 6, 0xe01414);
     car_img(ps_box, &img_presense_txt, (NAV_AREA_W - hud_layout_image_width(&img_presense_txt)) / 2, 98, 0xffffff);
     lv_obj_add_flag(ps_box, LV_OBJ_FLAG_HIDDEN);
-
-    /* Бар дистанции */
-    {
-        int bar_x = LX + 260, bar_y_bottom = 5 + 140;
-        int seg_w = 8, seg_h = 7, seg_gap = 2;
-        for (int i = 0; i < 16; i++) {
-            lv_obj_t *seg = lv_obj_create(scr);
-            hud_native_set_size(seg, seg_w, seg_h);
-            hud_native_set_pos(seg, bar_x, bar_y_bottom - (i + 1) * (seg_h + seg_gap));
-            lv_obj_set_style_border_width(seg, hud_native_metric(0), 0);
-            lv_obj_set_style_radius(seg, hud_native_metric(1), 0);
-            lv_obj_set_style_bg_color(seg, lv_color_hex(C_BAR_OFF), 0);
-            lv_obj_clear_flag(seg, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_add_flag(seg, LV_OBJ_FLAG_HIDDEN);
-            bar_seg[i] = seg;
-        }
-    }
 
     /* Маршрутная инфа */
     route_icon = lv_label_create(scr);

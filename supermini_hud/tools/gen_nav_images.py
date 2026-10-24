@@ -18,6 +18,7 @@ import math, os
 from PIL import Image, ImageDraw, ImageChops, ImageFilter
 
 S = 8
+HUD_PANEL_W, HUD_LAYOUT_W = 428, 518     # физическая ширина панели / ширина раскладки (user_config.h)
 W, H = 192, 116                 # область стрелки (ниже — строка дистанции)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
@@ -60,12 +61,32 @@ def vec(angle_deg):
     a = math.radians(angle_deg)
     return -math.sin(a), -math.cos(a)
 
-def line(d, pts, w, fill=None):
+FADE_L = 26                     # длина растворения дороги у открытого конца (px, область 192x116)
+FADES = []                      # открытые концы дорог текущего манёвра: (x, y, vx, vy, длина)
+
+
+def line(d, pts, w, fill=None, fade=False):
+    """Дорога-контекст. fade=True: у последней точки вместо скругления — растворение.
+    Растворение заканчивается там, где раньше заканчивалось скругление
+    (на радиус w/2 дальше конца оси, но не дальше края области)."""
     if fill is None: fill = ARROW_A
+    r = w / 2
+    ends = (pts[0],) if fade else (pts[0], pts[-1])
     d.line(P(pts), fill=fill, width=int(w * S), joint="curve")
-    for x, y in (pts[0], pts[-1]):
-        r = w / 2
+    for x, y in ends:
         d.ellipse([(x - r) * S, (y - r) * S, (x + r) * S, (y + r) * S], fill=fill)
+    if fade and fill != SKIP:
+        (x1, y1), (x2, y2) = pts[-2], pts[-1]
+        L = math.hypot(x2 - x1, y2 - y1)
+        vx, vy = (x2 - x1) / L, (y2 - y1) / L
+        # дорога продолжается до края скругления, чтобы растворение дошло до нуля
+        ext = r
+        d.line(P([(x2, y2), (x2 + vx * ext, y2 + vy * ext)]), fill=fill, width=int(w * S))
+        tmax = ext
+        for c0, dv, hi in ((x2, vx, W), (y2, vy, H)):
+            if dv > 1e-6: tmax = min(tmax, (hi - c0) / dv)
+            if dv < -1e-6: tmax = min(tmax, (0 - c0) / dv)
+        FADES.append((x2, y2, vx, vy, max(tmax, 0.0)))
 
 def head(d, tip, v, fill=None):
     if fill is None: fill = ARROW_A
@@ -103,23 +124,25 @@ def img_turn(sector):
     im = cv(); d = SD(im)
     v = vec(ang)
     # дорога: прямо через перекрёсток + выбранное направление
-    line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A)
+    line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A, fade=True)
     Lr = min(fit_len(CX, JY, v, 0), 70)
-    line(d, [(CX, JY), (CX + v[0] * Lr, JY + v[1] * Lr)], ROAD_W, ROAD_A)
+    line(d, [(CX, JY), (CX + v[0] * Lr, JY + v[1] * Lr)], ROAD_W, ROAD_A, fade=True)
     if sector == 0:
         arrow_path(d, [(CX, BY), (CX, 8)])
     elif sector == 8:
+        del FADES[:]
         return img_uturn(left=True)
     else:
         # крутые повороты: 7/9 (157.5 град) рисуем разворотом, 6/10 (135 град) —
         # со стойкой, смещённой в сторону от обратного луча
         if sector in (7, 9):
+            del FADES[:]
             return img_uturn(left=(sector == 7))
         if sector in (6, 10):
             sx = 1 if sector == 6 else -1
             x0, jy = CX + sx * 24, 34
-            line(d, [(x0, jy), (x0 + v[0] * 70, jy + v[1] * 70)], ROAD_W, ROAD_A)
-            line(d, [(x0, BY + 6), (x0, 4)], ROAD_W, ROAD_A)
+            line(d, [(x0, jy), (x0 + v[0] * 70, jy + v[1] * 70)], ROAD_W, ROAD_A, fade=True)
+            line(d, [(x0, BY + 6), (x0, 4)], ROAD_W, ROAD_A, fade=True)
             arrow_path(d, [(x0, BY), (x0, jy), (x0 + v[0] * 66, jy + v[1] * 66)])
         else:
             L = min(fit_len(CX, JY, v), 58)
@@ -132,8 +155,8 @@ def img_uturn(left=True):
     R = 20
     top = 30
     x2 = CX + s * 2 * R
-    line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A)
-    line(d, [(x2, BY + 6), (x2, 4)], ROAD_W, ROAD_A)
+    line(d, [(CX, BY + 6), (CX, 4)], ROAD_W, ROAD_A, fade=True)
+    line(d, [(x2, BY + 6), (x2, 4)], ROAD_W, ROAD_A, fade=True)
     # стойка вверх, дуга, вниз
     d.line(P([(CX, BY), (CX, top + R)]), fill=ARROW_A, width=int(ARROW_W * S))
     r = ARROW_W / 2
@@ -165,7 +188,7 @@ def img_roundabout(sector):
     v = vec(ang)
     ex0 = (rc[0] + v[0] * R, rc[1] + v[1] * R)
     Le = min(fit_len(ex0[0], ex0[1], v), 30)
-    line(d, [ex0, (ex0[0] + v[0] * (Le + 6), ex0[1] + v[1] * (Le + 6))], ROAD_W, ROAD_A)
+    line(d, [ex0, (ex0[0] + v[0] * (Le + 6), ex0[1] + v[1] * (Le + 6))], ROAD_W, ROAD_A, fade=True)
     # путь стрелки: въезд снизу, по кольцу против часовой (визуально), съезд
     entry = (CX, rc[1] + R)
     d.line(P([(CX, BY), entry]), fill=ARROW_A, width=int(ARROW_W * S))
@@ -195,17 +218,17 @@ def img_exit(right=True):
     im = cv(); d = SD(im)
     s = 1 if right else -1
     xm = CX - s * 14
-    line(d, [(xm, BY + 6), (xm, 4)], ROAD_W, ROAD_A)
+    line(d, [(xm, BY + 6), (xm, 4)], ROAD_W, ROAD_A, fade=True)
     pts = [(xm, BY), (xm, 70), (xm + s * 30, 38), (xm + s * 44, 12)]
-    line(d, [(xm, 70), (xm + s * 30, 38), (xm + s * 44, 4)], ROAD_W, ROAD_A)
+    line(d, [(xm, 70), (xm + s * 30, 38), (xm + s * 44, 4)], ROAD_W, ROAD_A, fade=True)
     arrow_path(d, pts)
     return im
 
 def img_fork(right=True):
     im = cv(); d = SD(im)
     s = 1 if right else -1
-    line(d, [(CX, BY + 6), (CX, 64), (CX - 36, 24), (CX - 44, 4)], ROAD_W, ROAD_A)
-    line(d, [(CX, 64), (CX + 36, 24), (CX + 44, 4)], ROAD_W, ROAD_A)
+    line(d, [(CX, BY + 6), (CX, 64), (CX - 36, 24), (CX - 44, 4)], ROAD_W, ROAD_A, fade=True)
+    line(d, [(CX, 64), (CX + 36, 24), (CX + 44, 4)], ROAD_W, ROAD_A, fade=True)
     arrow_path(d, [(CX, BY), (CX, 64), (CX + s * 34, 26), (CX + s * 42, 8)])
     return im
 
@@ -231,18 +254,40 @@ def crop(im):
     bb = im.getbbox()
     return (im.crop(bb), bb[0], bb[1]) if bb else (im, 0, 0)
 
-def road_layer(road, arrow):
+def fade_mask(q, fades):
+    """Множитель 0..255 на сетке q-кратного разрешения: у каждого открытого конца дороги
+    плавное растворение длиной FADE_L, ноль — на конце (см. line(fade=True))."""
+    import numpy as np
+    yy, xx = np.mgrid[0:H * q, 0:W * q]
+    px, py = (xx + 0.5) / q, (yy + 0.5) / q
+    m = np.ones((H * q, W * q), dtype=np.float32)
+    for ex, ey, vx, vy, tmax in fades:
+        u = (px - ex) * vx + (py - ey) * vy            # вдоль дороги, 0 = конец оси
+        perp = np.abs(-(px - ex) * vy + (py - ey) * vx)
+        f = np.clip((tmax - u) / FADE_L, 0.0, 1.0)
+        f = f * f * (3 - 2 * f)                         # smoothstep
+        zone = (perp <= ROAD_W / 2 + ROAD_BORDER + 2) & (u > tmax - FADE_L - 1)
+        m = np.where(zone, np.minimum(m, f), m)
+    return Image.fromarray((m * 255 + 0.5).astype(np.uint8), "L")
+
+
+def road_layer(road, arrow, fades=()):
     q = 4
     u = road.resize((W * q, H * q), Image.LANCZOS)
     m = u.point(lambda v: 255 if v >= 40 else 0)
     dil = m.filter(ImageFilter.MaxFilter(2 * ROAD_BORDER * q + 1))
     border = ImageChops.subtract(dil, m)
     fill = m.point(lambda v: ROAD_FILL if v else 0)
-    base = ImageChops.lighter(border, fill)
     sh = arrow.resize((W * q, H * q), Image.LANCZOS)
     sh = ImageChops.offset(sh, 0, SHADOW * q).filter(ImageFilter.GaussianBlur(1.2 * q))
     shade = sh.point(lambda v: int(255 - SHADOW_K * v))
-    return ImageChops.multiply(base, shade).resize((W, H), Image.LANCZOS)
+    fm_ = fade_mask(q, fades) if fades else None
+    def fin(layer):
+        o = ImageChops.multiply(layer, shade)
+        if fm_ is not None: o = ImageChops.multiply(o, fm_)
+        return o.resize((W, H), Image.LANCZOS)
+    # два слоя: контур (виден всегда) и заливка (в прошивке открывается снизу вверх по мере приближения)
+    return fin(fill), fin(border)
 
 def pack4(im):
     w, h = im.size
@@ -262,6 +307,7 @@ def main():
     global ROAD_A, ARROW_A
     imgs = []
     roads = {}
+    outs = {}
 
     def build(prefix, size, round_road=None, road_layers=False):
         global ROAD_A, ARROW_A
@@ -274,7 +320,10 @@ def main():
             big = fn(*args)
             if road_layers and road:
                 ROAD_A = ROAD_FILL; ARROW_A = SKIP; CUT_A = SKIP
-                roads[prefix + name] = crop(road_layer(fn(*args), big).resize(size, Image.LANCZOS))
+                del FADES[:]
+                f_, o_ = road_layer(fn(*args), big, list(FADES))
+                roads[prefix + name] = crop(f_.resize(size, Image.LANCZOS))
+                outs[prefix + name] = crop(o_.resize(size, Image.LANCZOS))
             ROAD_A = saved; ARROW_A = 255; CUT_A = 0
             c, x, y = crop(big.resize(size, Image.LANCZOS))
             imgs.append((prefix + name, c, x, y))
@@ -288,19 +337,35 @@ def main():
         add("uturn_l", img_uturn, True); add("uturn_r", img_uturn, False)
         add("arrived", img_arrived, road=False)
 
-    build("nav_", (128, 77), road_layers=True)
+    build("nav_", (192, 116), road_layers=True)    # v31: родной размер Waveshare (192x116), место освободил бар дистанции
     imgs[:] = [(n, im, x, y + 19) for n, im, x, y in imgs]
     # Road coordinates use the same vertical offset as the main images.
     roads = {n: (im, x, y + 19) for n, (im, x, y) in roads.items()}
+    outs = {n: (im, x, y + 19) for n, (im, x, y) in outs.items()}
     road_saved = ROAD_A
     ROAD_A = 0
     build("nav_s_", (SW, SH), round_road=110)
     ROAD_A = road_saved
 
+    # Прошивка рисует нативно в 428x142, а координаты (x, y) в таблицах остаются в единицах
+    # раскладки 518x172 (hud_native_x/y их переводят): сами картинки хранятся уже в
+    # физических пикселях, т.е. уменьшены в 428/518. Смещения не трогаем.
+    k = HUD_PANEL_W / HUD_LAYOUT_W
+    def phys(im):
+        return im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    roads = {n: (phys(im), x, y) for n, (im, x, y) in roads.items()}
+    outs = {n: (phys(im), x, y) for n, (im, x, y) in outs.items()}
+    imgs[:] = [(n, phys(im), x, y) for n, im, x, y in imgs]
+
     total = 0
     with open(os.path.join(OUT, "hud_nav_images.c"), "w") as f:
         f.write("/* Сгенерировано tools/gen_nav_images.py — не править вручную */\n")
         f.write('#define LV_LVGL_H_INCLUDE_SIMPLE\n#include "lvgl.h"\n#include "hud_nav_images.h"\n\n')
+        for n, (im, x, y) in outs.items():
+            name = "roado_" + n; data = pack4(im); total += len(data)
+            rows = [", ".join(f"0x{b:02x}" for b in data[i:i + 24]) for i in range(0, len(data), 24)]
+            f.write(f"static const uint8_t {name}_map[] = {{\n    " + ",\n    ".join(rows) + "\n};\n")
+            f.write(f"static const lv_img_dsc_t img_{name} = {{\n    .header.cf = LV_IMG_CF_ALPHA_4BIT, .header.always_zero = 0, .header.reserved = 0,\n    .header.w = {im.width}, .header.h = {im.height}, .data_size = {len(data)}, .data = {name}_map,\n}};\n\n")
         for n, (im, x, y) in roads.items():
             name = "road_" + n; data = pack4(im); total += len(data)
             rows = [", ".join(f"0x{b:02x}" for b in data[i:i + 24]) for i in range(0, len(data), 24)]
@@ -315,8 +380,8 @@ def main():
             f.write(f"static const NavImg {name}[{len(keys)}] = {{\n")
             for k in keys:
                 n, im, x, y = next(t for t in imgs if t[0] == k)
-                r = roads.get(n)
-                f.write(f"    {{ &img_{n}, {x}, {y}, &img_road_{n}, {r[1]}, {r[2]} }},\n" if r else f"    {{ &img_{n}, {x}, {y}, NULL, 0, 0 }},\n")
+                r = roads.get(n); o = outs.get(n)
+                f.write(f"    {{ &img_{n}, {x}, {y}, &img_road_{n}, {r[1]}, {r[2]}, &img_roado_{n}, {o[1]}, {o[2]} }},\n" if r else f"    {{ &img_{n}, {x}, {y}, NULL, 0, 0, NULL, 0, 0 }},\n")
             f.write("};\n")
         for pre in ("nav_", "nav_s_"):
             tbl(pre + "turn", [f"{pre}turn_{s_:02d}" for s_ in range(16)])

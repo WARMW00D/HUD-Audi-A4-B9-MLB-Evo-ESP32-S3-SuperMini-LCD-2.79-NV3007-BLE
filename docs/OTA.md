@@ -1,10 +1,10 @@
-# BLE OTA — HUD v29.0 / Android app 1.2
+# BLE OTA — HUD v30.0 / Android app 1.4.1
 
 [Русская версия](OTA_ru.md)
 
 ## Initial migration: USB required
 
-v28.x uses one factory application partition. OTA cannot replace the partition table. Install **v29.0 with the supplied `supermini_hud/partitions.csv` over USB** before using phone updates.
+v28.x uses one factory application partition. OTA cannot replace the partition table. Install **v30.0.x with the supplied `supermini_hud/partitions.csv` over USB** before using phone updates.
 
 Open `supermini_hud/supermini_hud.ino`; keep your working board configuration (4 MB Flash, 2 MB QSPI PSRAM). Set **Erase All Flash = Disabled**. The initial USB upload must write the bootloader, new partition table and app. Check the build/upload output: it must use this sketch’s CSV and write the table at 0x8000. Flashing only an application `.bin` does not migrate the layout.
 
@@ -21,7 +21,7 @@ Maximum application image: **2,031,616 bytes**. Check the new firmware size afte
 At Serial 115200, expect:
 
 ```text
-[fw] HUD Super Mini v29.0 / BLE OTA
+[fw] HUD Super Mini v31.0.0 / BLE OTA
 [ota] BLE service ready, next slot capacity=2031616
 ```
 
@@ -29,7 +29,7 @@ Capacity 0 indicates no usable OTA layout. The firmware sends Service Changed wh
 
 ## Update the Android app
 
-Build app 1.2 from [the Android repository](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App). Install over the old app with the same application ID and signing key. Keep the existing Android project’s wrapper/local SDK configuration if replacing only `app/`. Use Gradle 8.9 / AGP 8.7.3 and an ASCII-only Windows path.
+Build app 1.4.1 from [the Android repository](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App). Install over the old app with the same application ID and signing key. Keep the existing Android project’s wrapper/local SDK configuration if replacing only `app/`. Use Gradle 8.9 / AGP 8.7.3 and an ASCII-only Windows path.
 
 ## Select the right image
 
@@ -48,7 +48,7 @@ Future firmware must retain the compatible two-slot layout and OTA service. BLE 
 7. The HUD checks SHA-256 and validates the ESP-IDF image before choosing the boot slot.
 8. After commit the HUD reboots. Reconnect and check graphics, settings and CAN data.
 
-For the first test, you can transfer the same compiled v29.0 app into the other slot. Verify normal operation before relying on subsequent OTA updates.
+For the first test, you can transfer the same compiled v30.0 app into the other slot. Verify normal operation before relying on subsequent OTA updates.
 
 ## Cancellation, faults and recovery
 
@@ -98,6 +98,6 @@ The app negotiates MTU (minimum 64), sends one operation at a time and checks th
 
 Host tests use real SHA-256 through OpenSSL and mocked NimBLE/ESP-IDF. They cover transfer, owner checks, commit-after-verification, lost final ACK/reboot, duplicate commit, header/chip/hash rejection, flash faults, offset/size failures, incomplete image, cancel/disconnect and timeout. Settings/NVS regression tests pass; mbedTLS 2/3 API branches were checked with host adapters.
 
-**The ESP32/Android builds and real-device OTA transfer have not been performed in the authoring environment.** Real ESP-IDF image validation, GATT cache refresh, Flash behaviour and migration of bonds need device testing; host stubs do not verify those.
+**Real-device BLE OTA transfer has been confirmed by the maintainer** (HUD in the car, app 1.4.1). The ESP32/Android builds were not performed in the authoring environment; host stubs do not verify real BLE, GATT cache refresh or Flash behaviour.
 
 API references: [ESP-IDF OTA](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/ota.html), [NimBLE services](https://h2zero.github.io/NimBLE-Arduino/class_nim_b_l_e_service.html), [NimBLE server](https://h2zero.github.io/NimBLE-Arduino/class_nim_b_l_e_server.html), [Android BluetoothGatt](https://developer.android.com/reference/android/bluetooth/BluetoothGatt).

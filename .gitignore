@@ -15,3 +15,6 @@ capture*
 *.blf
 __pycache__/
 .DS_Store
+
+# local scratch
+_to_delete/

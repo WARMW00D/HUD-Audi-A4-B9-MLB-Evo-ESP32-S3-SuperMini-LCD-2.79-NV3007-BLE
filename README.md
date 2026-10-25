@@ -6,7 +6,7 @@ A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-E
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.1.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.5.0 APKs are available there too.
+**Firmware: v31.1.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.5.0 APK is in the app repository release.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
@@ -17,7 +17,7 @@ Source versions: **HUD firmware v31.1.0 / Android app 1.5.0 (versionCode 7)**.
 - **Overspeed tolerance:** set **0–100 km/h**, default **20 km/h**, always entered in km/h even with mph selected. The speed digits transition smoothly from white to red from 75% of tolerance to 100%; zero makes any positive overspeed fully red.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
-These controls need **app 1.4.1 or newer + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.1 still supports older firmware: missing controls are disabled. Prebuilt BINs and APKs are published in Releases. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
 
 ## v31.1.0 changes
 
@@ -67,9 +67,14 @@ Speed-camera alerts (camera icon, distance and limit) in the same renders:
 
 ## Download firmware BIN
 
-[v30.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v30.0.0) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/HUD-SuperMini-v30.0.0-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/SHA256SUMS-v30.0.0.txt).
+[v31.1.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v31.1.0) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/SHA256SUMS-v31.1.0.txt)
 
-Maintainer-supplied image, **1,149,616 bytes**. ESP32-S3 header, image checksum and SHA-256 were verified. **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; this app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. BLE OTA transfer to the HUD has been confirmed on the real device by the maintainer.
+The platform is selected at build time (`HUD_PLATFORM` in `hud_config.h`), so there are two images:
+
+- [MLB-Evo app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/HUD-SuperMini-v31.1.0-MLB-app.bin) — Audi A4 B9 (MLB-Evo), the tested platform.
+- [MQB app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/HUD-SuperMini-v31.1.0-MQB-app.bin) — VAG MQB, **experimental**: only checked on a pre-facelift Octavia A7, some signals are hypotheses.
+
+**OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; an app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. BLE OTA transfer to the HUD has been confirmed on the real device by the maintainer (v30.0).
 
 ## Download Android APK
 

@@ -1,4 +1,4 @@
-# BLE OTA — HUD v30.0 / Android app 1.4.1
+# BLE OTA — HUD v31.1 / Android app 1.4.1
 
 [Русская версия](OTA_ru.md)
 

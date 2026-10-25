@@ -1,4 +1,4 @@
-# OTA через BLE — HUD v30.0 / Android HUD Control 1.4.1
+# OTA через BLE — HUD v31.1 / Android HUD Control 1.4.1
 
 ## Первая установка — только USB
 

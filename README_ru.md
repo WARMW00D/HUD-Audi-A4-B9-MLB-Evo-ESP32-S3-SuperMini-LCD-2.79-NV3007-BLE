@@ -2,7 +2,7 @@
 
 [English](README.md) · [Приложение Android](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
-Самодельный HUD показывает данные Audi I-CAN: скорость, передачу, ACC, лимитер, ассистентов, дорожные знаки, двери и навигацию. Это компактная адаптация [проекта Waveshare 3.49″](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Waveshare-ESP32-S3-Touch-LCD-3.49) под **NV3007 428 × 142**, с настройками и обновлением прошивки по BLE через Android.
+Самодельный HUD показывает данные с Infotainment CAN Audi (MLB-Evo) или Comfort CAN (MQB): скорость, передачу, ACC, лимитер, ассистентов, дорожные знаки, двери и навигацию. Это компактная адаптация [проекта Waveshare 3.49″](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Waveshare-ESP32-S3-Touch-LCD-3.49) под **NV3007 428 × 142**, с настройками и обновлением прошивки по BLE через Android.
 
 **Проверенная конфигурация автомобиля:** работа устройства проверялась на **Audi A4 B9 рестайлинг (facelift) с магнитолой MIB3 High**.
 
@@ -217,6 +217,8 @@ SuperMini может использовать фоторезисторный д�
 
 `HUD_PLATFORM` в `hud_config.h` (или `-DHUD_PLATFORM=HUD_PLATFORM_MQB`) выбирает карту сигналов: `HUD_PLATFORM_MLB_EVO` (по умолчанию, Audi A4 B9 и другие MLB-Evo, проверено) или `HUD_PLATFORM_MQB` (VAG MQB, ранняя поддержка сообществом). Всё, что не связано с шиной (интерфейс, камеры, меню, OTA), общее. Список ACL для сниффера/шлюза и декодер переключаются вместе с платформой.
 
+**Шина:** на MLB-Evo HUD подключается к Infotainment CAN, на MQB — к Comfort CAN (500 кбит/с в обоих случаях); на схемах обе подписи.
+
 MQB проверен только по логам одной Skoda Octavia A7 (до рестайлинга, с установленным Virtual Cockpit), прогнанным через BLE-проигрыватель; саму приборку не снимали, поэтому ⚠️ означает гипотезу по логу.
 
 | Сигнал | MLB-Evo | MQB | Статус на MQB |
@@ -263,7 +265,7 @@ g++ -std=c++17 -Wno-deprecated-declarations -Itests/settings_stubs tests/test_bl
 - `supermini_hud/tests/` — host-тесты и заглушки.
 - `supermini_hud/tools/` — генераторы графики/шрифтов, превью и утилиты CAN.
 - `docs/` — инструкции OTA и CAN/шлюза на русском и английском.
-- `schematics/` — SVG, PNG, PDF на русском и английском (ревизия 3); Infortainment CAN; вход DC-DC дисплея от 5V.
+- `schematics/` — SVG, PNG, PDF на русском и английском (ревизия 3); подпись Infotainment CAN (MLB-Evo) / Comfort CAN (MQB); вход DC-DC дисплея от 5V.
 
 ## Безопасность и правовые оговорки
 

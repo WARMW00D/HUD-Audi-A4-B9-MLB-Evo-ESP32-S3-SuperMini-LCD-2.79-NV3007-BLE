@@ -2,7 +2,7 @@
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
-A DIY head-up display showing vehicle data from Audi I-CAN: speed, gear, ACC, speed limiter, driver assistance, traffic signs, doors and navigation. This is the compact **428 × 142 NV3007** adaptation of the [Waveshare 3.49″ project](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Waveshare-ESP32-S3-Touch-LCD-3.49), with Android settings and firmware updates over BLE.
+A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-Evo) or the Comfort CAN (MQB): speed, gear, ACC, speed limiter, driver assistance, traffic signs, doors and navigation. This is the compact **428 × 142 NV3007** adaptation of the [Waveshare 3.49″ project](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Waveshare-ESP32-S3-Touch-LCD-3.49), with Android settings and firmware updates over BLE.
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
@@ -218,6 +218,8 @@ For bench testing, use `HUD_SRC_FAKE` or a compatible BLE log player. Enable `HU
 
 `HUD_PLATFORM` in `hud_config.h` (or `-DHUD_PLATFORM=HUD_PLATFORM_MQB`) selects the signal map: `HUD_PLATFORM_MLB_EVO` (default, Audi A4 B9 and other MLB-Evo, tested) or `HUD_PLATFORM_MQB` (VAG MQB, early community support). Everything not tied to the bus (UI, cameras, menu, OTA) is shared. The ACL list for the sniffer/gateway and the decoder follow the selected platform.
 
+**Bus:** on MLB-Evo the HUD connects to the Infotainment CAN, on MQB to the Comfort CAN (500 kbit/s on both); the schematics carry both labels.
+
 MQB was checked only with logs from one Skoda Octavia A7 (pre-facelift, retrofitted Virtual Cockpit), replayed through the BLE player; the cluster itself was not recorded, so ⚠️ means a hypothesis from the log.
 
 | Signal | MLB-Evo | MQB | MQB status |
@@ -264,7 +266,7 @@ CAN signal verification depends on the vehicle and equipment. The inherited obse
 - `supermini_hud/tests/` — host tests and stubs.
 - `supermini_hud/tools/` — image/font generators, previews and CAN utilities.
 - `docs/` — OTA and CAN/gateway guides in English and Russian.
-- `schematics/` — Russian and English revision 3 SVG, PNG and PDF with the Infortainment CAN label; display DC-DC input is 5 V. Revision 2 remains available.
+- `schematics/` — Russian and English revision 3 SVG, PNG and PDF with the Infotainment CAN (MLB-Evo) / Comfort CAN (MQB) label; display DC-DC input is 5 V. Revision 2 remains available.
 
 ## Safety and legal notes
 

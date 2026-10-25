@@ -36,17 +36,17 @@ static inline uint32_t sig(const uint8_t *d, int start, int len) {
 | LKA warning | 0x397 | LDW_02 | Warnung_links / _rechts | 56 / 57 | bit | ⚠️ |
 | Doors, boot | 0x583 | ZV_02 | ZV_FT/BT/HFS/HBFS/HD_offen | 24…28 | bit | ✅ |
 | Bonnet | 0x65A | BCM_01 | BCM1_MH_Schalter | 31 | bit | ✅ |
-| Acceleration | 0x101 | ESP_02 | ESP_Laengsbeschl | 24\|10 | ×0.03125 − 16 m/s² | ⚠️ opendbc MLB, check presence on I-CAN |
+| Acceleration | 0x101 | ESP_02 | ESP_Laengsbeschl | 24\|10 | ×0.03125 − 16 m/s² | ⚠️ opendbc MLB, check presence on Infotainment CAN |
 | Acceleration (fallback) | 0x30B | Kombi_01 | KBI_angez_Geschw (derivative) | 48\|10 | ×0.32 km/h | ✅ layout |
 | Brakes | 0x106 | ESP_05 | ESP_Bremsdruck / ESP_Fahrer_bremst | 16\|10 / 26 | ×0.3 − 30 bar / bit | ⚠️ opendbc MLB |
 | PSD: segments | 0x462 | PSD_04 | Segment_ID / Vorgaenger / Segmentlaenge / Strassenkategorie / Bebauung | 0\|6 / 6\|6 / 12\|7 / 19\|3 / 43 | length ×2 m | ✅ drives 29.09 |
 | PSD: position | 0x463 | PSD_05 | Pos_Segment_ID / Pos_Segmentlaenge (remaining) | 0\|6 / 6\|7 | ×2 m | ✅ |
 | PSD: limits | 0x464 | PSD_06 mux 2 | Ges_Segment_ID / Offset / Geschwindigkeit / Typ / Ueberholverbot / Gesetzlich_Kategorie | 3\|6 / 9\|7 / 16\|5 / 21\|2 / 49\|2 / 56\|3 | code → km/h (lower bound), 23 = end | ✅ |
 | Trip computer | 0x17330F10 (29-bit) | BAP_BC, LSG 0x0F, from the cluster | fct 0x18 "since start" / 0x19 long-term: [0–1] consumption ×0.1 L/100 (0xFFFF none), [6–7] distance ×0.1 km, [11] time, min, [15–16] avg speed ×0.1; 0x16 range, km; 0x17 odometer ×0.1 km; 0x1C fuel, % | LE | ✅ drives 0006/0010 |
-| Side Assist | 0x30F | SWA_01 | SWA_Infostufe_SWA_li / _re, SWA_Warnung_SWA_li / _re | 26 / 42, 27 / 43 | bit: car in blind spot / warning | ⚠️ opendbc MLB, check on I-CAN |
+| Side Assist | 0x30F | SWA_01 | SWA_Infostufe_SWA_li / _re, SWA_Warnung_SWA_li / _re | 26 / 42, 27 / 43 | bit: car in blind spot / warning | ⚠️ opendbc MLB, check on Infotainment CAN |
 | Dimmer wheel | 0x64F | BCM1_04 | BCM1_Stellgroesse_Kl_58s | 25\|7 | 1–100 % | ✅ log 0003 |
 | Light sensor | 0x5A0 | RLS_01 | LS_Helligkeit_FW / LS_Helligkeit_IR / RLS_Vorfeldhelligkeit_Boost / RS_Regenmenge | 8\|10 / 0\|8 / 35\|4 / 24\|4 | ×6 lx (≤1021) / ×400 lx / 0–15 / ×10 % | ✅ drives 0006/0010 |
-| Date and time | 0x6B2 | Diagnose_01 | UH_Jahr / Monat / Tag / Stunde / Minute / Sekunde | 28\|7 / 35\|4 / 39\|5 / 44\|5 / 49\|6 / 55\|6 | year +2000 | ⚠️ opendbc; frame present on I-CAN |
+| Date and time | 0x6B2 | Diagnose_01 | UH_Jahr / Monat / Tag / Stunde / Minute / Sekunde | 28\|7 / 35\|4 / 39\|5 / 44\|5 / 49\|6 / 55\|6 | year +2000 | ⚠️ opendbc; frame present on Infotainment CAN |
 | Fuel | 0x107 | Motor_04 | MO_KVS (counter, µL) | 48\|15 | wraps at 32768 | ⚠️ opendbc MLB |
 | Pre sense | 0x2A9 | ACC_15 | AWV_Warnung | 16\|3 | 0 none, 1 latent, 2 warning, 3 acute, 4 braking, 5 take over, 6 turning | ⚠️ from opendbc MQB |
 | Brightness | 0x5F0 | Dimmung_01 | DI_KL_58xd / DI_Display_Nachtdesign | 0\|8 / 15 | final display brightness 10–100 % (254 Init, 255 error) / night design | ✅ log 0003, dimmer wheel |

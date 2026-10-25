@@ -36,17 +36,17 @@ static inline uint32_t sig(const uint8_t *d, int start, int len) {
 | Предупреждение LKA | 0x397 | LDW_02 | Warnung_links / _rechts | 56 / 57 | бит | ⚠️ |
 | Двери, багажник | 0x583 | ZV_02 | ZV_FT/BT/HFS/HBFS/HD_offen | 24…28 | бит | ✅ |
 | Капот | 0x65A | BCM_01 | BCM1_MH_Schalter | 31 | бит | ✅ |
-| Ускорение | 0x101 | ESP_02 | ESP_Laengsbeschl | 24\|10 | ×0.03125 − 16 м/с² | ⚠️ opendbc MLB, есть ли на I-CAN — проверить |
+| Ускорение | 0x101 | ESP_02 | ESP_Laengsbeschl | 24\|10 | ×0.03125 − 16 м/с² | ⚠️ opendbc MLB, есть ли на Infotainment CAN — проверить |
 | Ускорение (запасное) | 0x30B | Kombi_01 | KBI_angez_Geschw (производная) | 48\|10 | ×0.32 км/ч | ✅ раскладка |
 | Тормоза | 0x106 | ESP_05 | ESP_Bremsdruck / ESP_Fahrer_bremst | 16\|10 / 26 | ×0.3 − 30 бар / бит | ⚠️ opendbc MLB |
 | PSD: сегменты | 0x462 | PSD_04 | Segment_ID / Vorgaenger / Segmentlaenge / Strassenkategorie / Bebauung | 0\|6 / 6\|6 / 12\|7 / 19\|3 / 43 | длина ×2 м | ✅ поездки 29.09 |
 | PSD: позиция | 0x463 | PSD_05 | Pos_Segment_ID / Pos_Segmentlaenge (остаток) | 0\|6 / 6\|7 | ×2 м | ✅ |
 | PSD: ограничения | 0x464 | PSD_06 mux 2 | Ges_Segment_ID / Offset / Geschwindigkeit / Typ / Ueberholverbot / Gesetzlich_Kategorie | 3\|6 / 9\|7 / 16\|5 / 21\|2 / 49\|2 / 56\|3 | код → км/ч (нижняя граница), 23 — конец | ✅ |
 | Бортовой компьютер | 0x17330F10 (29 бит) | BAP_BC, LSG 0x0F, от приборки | fct 0x18 «с момента запуска» / 0x19 долговременная: [0–1] расход ×0.1 л/100 (0xFFFF — нет), [6–7] пробег ×0.1 км, [11] время, мин, [15–16] ср. скорость ×0.1; 0x16 запас хода, км; 0x17 одометр ×0.1 км; 0x1C топливо, % | LE | ✅ поездки 0006/0010 |
-| Side Assist | 0x30F | SWA_01 | SWA_Infostufe_SWA_li / _re, SWA_Warnung_SWA_li / _re | 26 / 42, 27 / 43 | бит: машина в мёртвой зоне / предупреждение | ⚠️ opendbc MLB, на I-CAN проверить |
+| Side Assist | 0x30F | SWA_01 | SWA_Infostufe_SWA_li / _re, SWA_Warnung_SWA_li / _re | 26 / 42, 27 / 43 | бит: машина в мёртвой зоне / предупреждение | ⚠️ opendbc MLB, на Infotainment CAN проверить |
 | Колёсико подсветки | 0x64F | BCM1_04 | BCM1_Stellgroesse_Kl_58s | 25\|7 | 1–100 % | ✅ лог 0003 |
 | Датчик света | 0x5A0 | RLS_01 | LS_Helligkeit_FW / LS_Helligkeit_IR / RLS_Vorfeldhelligkeit_Boost / RS_Regenmenge | 8\|10 / 0\|8 / 35\|4 / 24\|4 | ×6 лк (≤1021) / ×400 лк / 0–15 / ×10 % | ✅ поездки 0006/0010 |
-| Дата и время | 0x6B2 | Diagnose_01 | UH_Jahr / Monat / Tag / Stunde / Minute / Sekunde | 28\|7 / 35\|4 / 39\|5 / 44\|5 / 49\|6 / 55\|6 | год +2000 | ⚠️ opendbc; кадр есть на I-CAN |
+| Дата и время | 0x6B2 | Diagnose_01 | UH_Jahr / Monat / Tag / Stunde / Minute / Sekunde | 28\|7 / 35\|4 / 39\|5 / 44\|5 / 49\|6 / 55\|6 | год +2000 | ⚠️ opendbc; кадр есть на Infotainment CAN |
 | Расход | 0x107 | Motor_04 | MO_KVS (счётчик, мкл) | 48\|15 | переполнение на 32768 | ⚠️ opendbc MLB |
 | Pre sense | 0x2A9 | ACC_15 | AWV_Warnung | 16\|3 | 0 нет, 1 латентное, 2 предупр., 3 острое, 4 торможение, 5 перехватите управление, 6 при повороте | ⚠️ из opendbc MQB |
 | Яркость | 0x5F0 | Dimmung_01 | DI_KL_58xd / DI_Display_Nachtdesign | 0\|8 / 15 | итоговая яркость дисплеев 10–100 % (254 Init, 255 ошибка) / ночной дизайн | ✅ лог 0003, колёсико |

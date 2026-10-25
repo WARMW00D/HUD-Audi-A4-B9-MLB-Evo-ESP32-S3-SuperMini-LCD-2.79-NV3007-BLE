@@ -1,4 +1,4 @@
-# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.0.0
+# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.1.0
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
@@ -6,11 +6,11 @@ A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-E
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.0.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.5.0 APKs are available there too.
+**Firmware: v31.1.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. The prebuilt app firmware in Releases below is v30.0.0 (v30.0.1 changes only the navigation road artwork and the version string); Android 1.5.0 APKs are available there too.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v31.0.0 / Android app 1.5.0 (versionCode 7)**.
+Source versions: **HUD firmware v31.1.0 / Android app 1.5.0 (versionCode 7)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
@@ -18,6 +18,13 @@ Source versions: **HUD firmware v31.0.0 / Android app 1.5.0 (versionCode 7)**.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
 These controls need **app 1.4.1 or newer + firmware v30.0.0**. App 1.4.1 still supports older firmware: missing controls are disabled. Maintainer-supplied APK 1.4.1 and v30.0.0 app-BIN are published in Releases; integrity was verified. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+
+## v31.1.0 changes
+
+- Display: new `HUD_LCD_MIRROR_X` option in `user_config.h` (default 0). `1` mirrors the picture horizontally, for a HUD that is read in a windshield reflection. The mirror is done in software in the display flush, in both the DMA and the blocking path.
+- Navigation: the small next-manoeuvre arrow now follows the distance text instead of sitting in the corner of the navigation area (it was partly clipped and could lie on the ACC icon). With ACC active a long distance string and the arrow shift left together to stay clear of the icon.
+- Tools: `tools/fonts/make_fonts.py` now uses the font sizes of the shipped `hud_font_*.c` files (speed 96 instead of 116, and so on), so regenerating the fonts gives identical files.
+- Documentation: MLB-Evo screenshots rendered from real A4 logs (navigation, ACC, Lane Assist, speed cameras); the schematics and README name the bus (Infotainment CAN for MLB-Evo, Comfort CAN for MQB) and the CAN wire colours; the Android app 1.5.0 links point to its own release.
 
 ## v31.0.0 changes
 
@@ -175,7 +182,7 @@ Put `supermini_hud/config/lv_conf.h` next to the installed `lvgl/` directory. Re
 
 **Upgrading v28.x → v30.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
 
-Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.0.0 / BLE OTA` and a next-slot capacity of 2031616.
+Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.1.0 / BLE OTA` and a next-slot capacity of 2031616.
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 

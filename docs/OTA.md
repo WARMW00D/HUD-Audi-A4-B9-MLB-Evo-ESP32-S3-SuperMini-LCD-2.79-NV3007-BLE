@@ -21,7 +21,7 @@ Maximum application image: **2,031,616 bytes**. Check the new firmware size afte
 At Serial 115200, expect:
 
 ```text
-[fw] HUD Super Mini v31.0.0 / BLE OTA
+[fw] HUD Super Mini v31.1.0 / BLE OTA
 [ota] BLE service ready, next slot capacity=2031616
 ```
 

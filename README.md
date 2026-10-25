@@ -220,6 +220,15 @@ For bench testing, use `HUD_SRC_FAKE` or a compatible BLE log player. Enable `HU
 
 **Bus:** on MLB-Evo the HUD connects to the Infotainment CAN, on MQB to the Comfort CAN (500 kbit/s on both); the schematics carry both labels.
 
+Wire colors at the vehicle connector:
+
+| Line | MLB-Evo | MQB |
+|---|---|---|
+| CAN-H | violet | orange-green |
+| CAN-L | orange-brown | orange-brown |
+
+Use a twisted pair to the CAN module. Verify the colors on your car before connecting.
+
 MQB was checked only with logs from one Skoda Octavia A7 (pre-facelift, retrofitted Virtual Cockpit), replayed through the BLE player; the cluster itself was not recorded, so ⚠️ means a hypothesis from the log.
 
 | Signal | MLB-Evo | MQB | MQB status |

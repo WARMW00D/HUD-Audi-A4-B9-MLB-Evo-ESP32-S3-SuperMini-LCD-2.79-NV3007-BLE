@@ -28,6 +28,21 @@ static Arduino_HWSPI bus(HUD_LCD_DC, HUD_LCD_CS, HUD_LCD_SCK, HUD_LCD_MOSI, -1);
 static Arduino_NV3007 panel(&bus, HUD_LCD_RST, HUD_LCD_ROTATION, false,
     142, 428, HUD_LCD_COL_OFFSET_1, 0, HUD_LCD_COL_OFFSET_2, 0,
     nv3007_279_init_operations, sizeof(nv3007_279_init_operations));
+#ifndef HUD_LCD_MIRROR_X
+#define HUD_LCD_MIRROR_X 0
+#endif
+#if HUD_LCD_MIRROR_X
+/* Reverse every row of the strip in place (RGB565, one 16-bit word per pixel). */
+static void mirror_rows(lv_color_t *pixels, int w, int h)
+{
+    uint16_t *p = reinterpret_cast<uint16_t *>(pixels);
+    for (int y = 0; y < h; ++y, p += w) {
+        for (int i = 0, j = w - 1; i < j; ++i, --j) {
+            const uint16_t t = p[i]; p[i] = p[j]; p[j] = t;
+        }
+    }
+}
+#endif
 #if HUD_PERF_LOG
 static volatile int64_t g_t_queued;
 static volatile uint32_t g_xfer_us_sum, g_xfer_cnt, g_bytes_sum;
@@ -120,7 +135,12 @@ static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *pixe
         pixels[w * h - 1].full = (c >> 8) | (c << 8);
     }
 #endif
+#if HUD_LCD_MIRROR_X
+    mirror_rows(pixels, w, h);
+    const int x0 = (HUD_PANEL_W - 1 - area->x2) + g_x_start, x1 = (HUD_PANEL_W - 1 - area->x1) + g_x_start;
+#else
     const int x0 = area->x1 + g_x_start, x1 = area->x2 + g_x_start;
+#endif
     const int y0 = HUD_VIEW_Y + area->y1 + g_y_start, y1 = HUD_VIEW_Y + area->y2 + g_y_start;
     slot_cmd(0, 0x2A);  slot_d16x2(1, x0, x1);
     slot_cmd(2, 0x2B);  slot_d16x2(3, y0, y1);
@@ -211,8 +231,14 @@ static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *pixe
         pixels[i].full = (c >> 8) | (c << 8);
     }
 #endif
+#if HUD_LCD_MIRROR_X
+    mirror_rows(pixels, w, h);
+    panel.draw16bitRGBBitmap(HUD_PANEL_W - 1 - area->x2, HUD_VIEW_Y + area->y1,
+                            reinterpret_cast<uint16_t *>(pixels), w, h);
+#else
     panel.draw16bitRGBBitmap(area->x1, HUD_VIEW_Y + area->y1,
                             reinterpret_cast<uint16_t *>(pixels), w, h);
+#endif
 #if HUD_PERF_LOG
     g_xfer_us_sum += (uint32_t)(esp_timer_get_time() - t0);
     g_xfer_cnt++;

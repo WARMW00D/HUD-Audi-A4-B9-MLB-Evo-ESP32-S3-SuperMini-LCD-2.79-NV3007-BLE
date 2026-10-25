@@ -209,6 +209,7 @@ To replace the phone: while the HUD is running, hold **BOOT for 5 s and release*
 | `HUD_CAN_RX_PIN` / `HUD_CAN_TX_PIN` | 8 / 9, TX wired to CTX/TXD |
 | `HUD_CAN_BITRATE_K` | 500 |
 | `HUD_LCD_SPI_HZ` / `HUD_LCD_ROTATION` | 20 MHz / 1 |
+| `HUD_LCD_MIRROR_X` | 0; `1` mirrors the picture horizontally (for reading it in a windshield reflection) |
 | `HUD_BR_DARK_WHEEL_MIN` / `_MAX` | 2 / 40 |
 | `HUD_BR_BRIGHT_WHEEL_MIN` / `_MAX` | 200 / 255 |
 | `HUD_LANG` / `HUD_UNITS` | RU / km |

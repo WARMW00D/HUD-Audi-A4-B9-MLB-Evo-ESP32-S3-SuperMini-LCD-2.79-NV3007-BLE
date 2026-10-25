@@ -208,6 +208,7 @@ SuperMini может использовать фоторезисторный д�
 | `HUD_CAN_RX_PIN` / `HUD_CAN_TX_PIN` | 8 / 9, TX подключён к CTX/TXD |
 | `HUD_CAN_BITRATE_K` | 500 |
 | `HUD_LCD_SPI_HZ` / `HUD_LCD_ROTATION` | 20 MHz / 1 |
+| `HUD_LCD_MIRROR_X` | 0; `1` зеркалит картинку по горизонтали (для чтения в отражении от стекла) |
 | `HUD_BR_DARK_WHEEL_MIN` / `_MAX` | 2 / 40 |
 | `HUD_BR_BRIGHT_WHEEL_MIN` / `_MAX` | 200 / 255 |
 | `HUD_LANG` / `HUD_UNITS` | RU / km |

@@ -29,6 +29,7 @@
 
 #define HUD_LCD_ROTATION 1   /* 1 or 3: landscape */
 #define HUD_LCD_INVERT   0
+#define HUD_LCD_MIRROR_X 0   /* 1: mirror the picture horizontally (HUD that is read in a windshield reflection); done in software in flush_cb */
 #define HUD_BL_ACTIVE_HIGH 1 /* BL is a logic input; use an external driver if needed */
 #define HUD_LCD_COL_OFFSET_1 12
 #define HUD_LCD_COL_OFFSET_2 14

@@ -936,7 +936,18 @@ static void hud_update_cb(lv_timer_t *t)
             lv_coord_t nx = (hud_native_x(NAV_AREA_W) + tsz.x) / 2 + 4 + hud_native_x(next_cur->x);
             lv_coord_t ny = hud_native_y(146 - 5 - 4) + ((lv_coord_t)rf->line_height - (lv_coord_t)next_cur->img->header.h) / 2
                             + hud_native_y(next_cur->y);
-            lv_obj_set_pos(next_img, nx, ny);
+            /* слева от значка ACC (на одной высоте): длинная дистанция вместе со стрелкой
+               сдвигается влево, чтобы стрелка не легла на значок */
+            lv_coord_t shift = 0;
+            if (!lv_obj_has_flag(acc_dot, LV_OBJ_FLAG_HIDDEN)) {
+                lv_coord_t lim = lv_obj_get_x(acc_dot) - lv_obj_get_x(arrow_ph) - 2;
+                lv_coord_t over = nx + (lv_coord_t)next_cur->img->header.w - lim;
+                if (over > 0) shift = over;
+            }
+            lv_obj_set_x(nav_dist_lbl, -shift);
+            lv_obj_set_pos(next_img, nx - shift, ny);
+        } else {
+            lv_obj_set_x(nav_dist_lbl, 0);
         }
         (void)calc;
     }

@@ -854,7 +854,9 @@ static void hud_update_cb(lv_timer_t *t)
 
     const NavImg *ni = nav ? nav_pick(&nav_big, d.man_main, d.man_dir) : NULL;
 
-    /* следующий манёвр (Maneuver_2) — маленькой серой стрелкой в правом нижнем углу */
+    /* следующий манёвр (Maneuver_2) — маленькой серой стрелкой справа от дистанции;
+       положение считается ниже, когда уже известен текст дистанции */
+    const NavImg *next_cur = NULL;
     {
         uint8_t m2 = d.man2_main;
         bool show2 = nav && ni != NULL && m2 != 0x00 && m2 != 0x01 && m2 != 0x09 && m2 != 0x0A;
@@ -862,9 +864,9 @@ static void hud_update_cb(lv_timer_t *t)
         static const NavImg *n2_last = NULL;
         if (n2 && n2 != n2_last) {
             lv_img_set_src(next_img, n2->img);
-            hud_native_set_pos(next_img, NAV_AREA_W - NAV_SMALL_W - 2 + n2->x, 140 - NAV_SMALL_H - 1 + n2->y);
         }
         n2_last = n2;
+        next_cur = n2;
         vis(next_img, n2 != NULL);
     }
     vis(arrow_ph, nav);
@@ -925,6 +927,17 @@ static void hud_update_cb(lv_timer_t *t)
             set_text(nav_dist_lbl, dist);
         }
         vis(nav_dist_lbl, (d.valid & V_MDIST) && ni != NULL);
+        if (next_cur) {
+            /* дистанция выровнена по центру области — стрелку ставим сразу за текстом,
+               по высоте строки; ширина текста нужна в пикселях панели */
+            const lv_font_t *rf = &hud_font_route;
+            lv_point_t tsz;
+            lv_txt_get_size(&tsz, lv_label_get_text(nav_dist_lbl), rf, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+            lv_coord_t nx = (hud_native_x(NAV_AREA_W) + tsz.x) / 2 + 4 + hud_native_x(next_cur->x);
+            lv_coord_t ny = hud_native_y(146 - 5 - 4) + ((lv_coord_t)rf->line_height - (lv_coord_t)next_cur->img->header.h) / 2
+                            + hud_native_y(next_cur->y);
+            lv_obj_set_pos(next_img, nx, ny);
+        }
         (void)calc;
     }
 

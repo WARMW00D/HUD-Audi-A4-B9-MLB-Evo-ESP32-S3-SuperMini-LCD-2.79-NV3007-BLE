@@ -48,6 +48,16 @@
 
 Фото от WARMW00D: скорость, передача, ограничение скорости, навигация и информация о топливе на дисплее NV3007.
 
+### Экраны по реальным логам MLB-Evo
+
+Отрисовано по CAN-логам Audi A4 B9 (MLB-Evo) настоящим декодером и интерфейсом (стендовый рендер панели 428×142): стрелки навигации, знаки ограничения скорости, ACC с заданной скоростью, Lane Assist, пункт назначения.
+
+![Экраны MLB-Evo: навигация, ACC, Lane Assist](docs/images/mlb-screens.png)
+
+Оповещения о камерах (значок камеры, расстояние и лимит) в тех же рендерах:
+
+![Экраны MLB-Evo с оповещениями о камерах](docs/images/mlb-cameras.png)
+
 ## Скачать прошивку BIN
 
 [Релиз v30.0](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v30.0.0) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/HUD-SuperMini-v30.0.0-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/SHA256SUMS-v30.0.0.txt).

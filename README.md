@@ -48,6 +48,16 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0**. App 1.4.1 still s
 
 Photo supplied by WARMW00D: speed, gear, speed-limit sign, navigation and fuel information on the NV3007 display.
 
+### Screens from real MLB-Evo logs
+
+Rendered from Audi A4 B9 (MLB-Evo) CAN logs through the real decoder and UI (host render of the 428×142 panel): navigation arrows, speed-limit signs, ACC with the set speed, Lane Assist, destination.
+
+![MLB-Evo screens: navigation, ACC, Lane Assist](docs/images/mlb-screens.png)
+
+Speed-camera alerts (camera icon, distance and limit) in the same renders:
+
+![MLB-Evo screens with speed-camera alerts](docs/images/mlb-cameras.png)
+
 ## Download firmware BIN
 
 [v30.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v30.0.0) · [App-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/HUD-SuperMini-v30.0.0-app.bin) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v30.0.0/SHA256SUMS-v30.0.0.txt).

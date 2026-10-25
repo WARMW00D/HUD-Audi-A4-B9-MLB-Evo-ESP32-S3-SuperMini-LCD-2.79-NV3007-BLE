@@ -21,20 +21,21 @@ SRC = os.path.join(HERE, "Montserrat-Bold.ttf")
 TNUM = os.path.join(HERE, "Montserrat-Bold-tnum.ttf")
 COND = os.path.join(HERE, "RobotoCondensed-Bold.ttf")   # цифры знака ограничения (узкие, как на дорожных знаках)
 
-# имя файла/символа, --size, символы. Размеры подобраны под прежнюю высоту цифр.
+# имя файла/символа, --size, символы. Размеры в физических пикселях панели (428x142) — те же,
+# что в подключённых hud_font_*.c; пересборка даёт идентичные файлы.
 FONTS = [
-    ("hud_font_speed", 116, "0123456789", TNUM),
-    ("hud_font_gear",   22, "PRNDSMEOfroad123456789", TNUM),
-    ("hud_font_fuel",   22, "0123456789.Lлgal ", TNUM),      # сколько заправить: "13 л" / "3.4 gal"
-    ("hud_font_route",  28, "0123456789:.kmhift кмч", TNUM),   # без букв с выносными вниз (y): иначе растёт межстрочный
-    ("hud_font_small",  26, "0123456789", TNUM),
-    ("hud_font_kmh",    38, "km/hpкмч", TNUM),
+    ("hud_font_speed", 96, "0123456789", TNUM),
+    ("hud_font_gear",   18, "PRNDSMEOfroad123456789", TNUM),
+    ("hud_font_fuel",   18, "0123456789.Lлgal ", TNUM),      # сколько заправить: "13 л" / "3.4 gal"
+    ("hud_font_route",  23, "0123456789:.kmhift кмч", TNUM),   # без букв с выносными вниз (y): иначе растёт межстрочный
+    ("hud_font_small",  21, "0123456789", TNUM),
+    ("hud_font_kmh",    31, "km/hpкмч", TNUM),
     # знак: круг 64 px, красное кольцо 7 px, белое поле 50 px. Размеры — максимальные,
     # при которых "88" / "188" целиком помещаются в белое поле (диагональ текста <= 48 px)
-    ("hud_font_sign2",  40, "0123456789", COND),
-    ("hud_font_sign3",  30, "0123456789", COND),
+    ("hud_font_sign2",  33, "0123456789", COND),
+    ("hud_font_sign3",  25, "0123456789", COND),
     # меню настроек: латиница + кириллица (встроенные шрифты LVGL кириллицы не имеют)
-    ("hud_font_menu",   20, "range:0x20-0x7E,0x401,0x410-0x44F,0x451", SRC),
+    ("hud_font_menu",   17, "range:0x20-0x7E,0x401,0x410-0x44F,0x451", SRC),
 ]
 
 def make_tnum():

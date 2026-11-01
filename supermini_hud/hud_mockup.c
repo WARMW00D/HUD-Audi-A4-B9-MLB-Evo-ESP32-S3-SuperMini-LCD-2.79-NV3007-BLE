@@ -79,6 +79,7 @@ extern "C" {
 #define SIGN_D       64    /* диаметр знака         */
 #define SIGN_RING    7     /* толщина красного кольца */
 #define C_SIGN_WARN  0xff8080
+#define PROG_W 176
 #define C_NAV_ARROW  0x30b0f0   /* Audi-style blue */
 #define C_NAV_ROAD   0xffffff   /* дорожный слой: серая заливка + белая кайма в маске */
 #define C_NAV_NEXT   0xa8a8a8
@@ -99,6 +100,7 @@ static lv_obj_t *ps_box, *ps_tri;           /* предупреждение pre 
 #define ACC_GAP_MID  3
 #define ACC_Y        (172 - ACC_SQ)   /* самый низ экрана, подальше от дистанции до манёвра */
 static lv_obj_t *acc_sq[2][ACC_SEG];
+static lv_obj_t *prog_bg, *prog_fill;
 static lv_obj_t *arrow_ph, *road_outline, *road_clip, *arrow_road, *arrow_img, *arrow_lbl, *nav_dist_lbl, *next_img;
 static lv_obj_t *route_icon, *route_lbl;
 static lv_obj_t *speed_lbl;
@@ -870,6 +872,7 @@ static void hud_update_cb(lv_timer_t *t)
         vis(next_img, n2 != NULL);
     }
     vis(arrow_ph, nav);
+    if (!nav) { vis(prog_bg, false); vis(prog_fill, false); }   /* бар — вне arrow_ph, прячем вместе с областью */
     if (nav) {
         static const NavImg *ni_last = NULL;
         if (ni && ni != ni_last) {
@@ -886,15 +889,24 @@ static void hud_update_cb(lv_timer_t *t)
         vis(arrow_road, ni != NULL && ni->road != NULL);
         vis(road_clip, ni != NULL && ni->road != NULL);
         vis(road_outline, ni != NULL && ni->roado != NULL);
+        vis(arrow_road, ni != NULL && ni->road != NULL);
+        vis(road_clip, ni != NULL && ni->road != NULL);
         if (ni && ni->road) {
-            /* далеко — дороги нет (чёрное), по мере приближения она заливается серым снизу вверх */
-            int pct = ((d.valid & V_MDIST) && d.bargraph <= 100) ? 100 - d.bargraph : 100;   /* bargraph падает по мере приближения */
-            lv_coord_t ty = hud_native_y(ni->ry), h = (lv_coord_t)ni->road->header.h;
-            lv_coord_t cut = ty + (lv_coord_t)(((100 - pct) * h + 50) / 100);
+            /* дорога всегда залита целиком; приближение к манёвру показывает бар над стрелкой */
+            lv_coord_t ty = hud_native_y(ni->ry);
             lv_coord_t full = hud_native_y(166);
-            lv_obj_set_y(road_clip, cut);
-            lv_obj_set_height(road_clip, full > cut ? full - cut : 1);
-            lv_obj_set_pos(arrow_road, hud_native_x(ni->rx), ty - cut);
+            lv_obj_set_y(road_clip, ty);
+            lv_obj_set_height(road_clip, full > ty ? full - ty : 1);
+            lv_obj_set_pos(arrow_road, hud_native_x(ni->rx), 0);
+        }
+        {
+            bool pg = ni != NULL && (d.valid & V_MDIST) && d.bargraph <= 100;
+            vis(prog_bg, pg);
+            vis(prog_fill, pg);
+            if (pg) {
+                int pct = 100 - d.bargraph;              /* bargraph падает по мере приближения */
+                hud_native_set_width(prog_fill, (PROG_W * (pct < 3 ? 3 : pct)) / 100);
+            }
         }
         vis(arrow_img, ni != NULL);
         vis(arrow_lbl, ni == NULL && calc);             /* расчёт маршрута; 0x00/0x01 — пусто */
@@ -1127,6 +1139,24 @@ void build_hud_mockup(void)
     hud_native_set_size(arrow_ph, NAV_AREA_W, 166);   /* до низа раскладки: строка дистанции стоит на уровне скорости ACC */
     hud_native_set_pos(arrow_ph, LX + 122, 5);   /* v31: бар убран, область — родные 192 из Waveshare */
     lv_obj_clear_flag(arrow_ph, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    prog_bg = lv_obj_create(scr);                   /* бар прогресса до манёвра — над стрелкой */
+    lv_obj_remove_style_all(prog_bg);
+    lv_obj_set_style_bg_opa(prog_bg, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(prog_bg, lv_color_hex(0x303030), 0);
+    lv_obj_set_style_radius(prog_bg, hud_native_metric(3), 0);
+    hud_native_set_size(prog_bg, PROG_W, 6);
+    hud_native_set_pos(prog_bg, LX + 122 + (NAV_AREA_W - PROG_W) / 2, 6);
+    lv_obj_clear_flag(prog_bg, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(prog_bg, LV_OBJ_FLAG_HIDDEN);
+    prog_fill = lv_obj_create(scr);
+    lv_obj_remove_style_all(prog_fill);
+    lv_obj_set_style_bg_opa(prog_fill, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(prog_fill, lv_color_hex(C_NAV_ARROW), 0);
+    lv_obj_set_style_radius(prog_fill, hud_native_metric(3), 0);
+    hud_native_set_size(prog_fill, 3, 6);
+    hud_native_set_pos(prog_fill, LX + 122 + (NAV_AREA_W - PROG_W) / 2, 6);
+    lv_obj_clear_flag(prog_fill, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(prog_fill, LV_OBJ_FLAG_HIDDEN);
     road_outline = car_img(arrow_ph, nav_big.turn[0].roado, nav_big.turn[0].ox, nav_big.turn[0].oy, C_NAV_ROAD);   /* контур дороги — виден всегда */
     lv_obj_add_flag(road_outline, LV_OBJ_FLAG_HIDDEN);
     road_clip = lv_obj_create(arrow_ph);                /* обрезка дороги снизу вверх: прогресс до манёвра вместо бара */
@@ -1273,7 +1303,7 @@ void build_hud_mockup(void)
     /* Сколько заправить до полного — над зоной скорости слева, на одной линии
        с режимом КП: маленькая колонка АЗС + «13 л» / «3.4 gal», серым */
     /* Convert 10 physical display pixels to the pre-scaled canvas (12 px). */
-    const int tank_shift_x = (10 * HUD_LAYOUT_W + HUD_PANEL_W / 2) / HUD_PANEL_W;
+    const int tank_shift_x = (10 * HUD_LAYOUT_W + HUD_PANEL_W / 2) / HUD_PANEL_W + 44;
     tank_icon = car_img(scr, &img_fuel_icon, 265 + tank_shift_x, 2, C_LABEL_GRAY);
     lv_obj_add_flag(tank_icon, LV_OBJ_FLAG_HIDDEN);
     tank_lbl = lv_label_create(scr);

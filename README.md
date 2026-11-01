@@ -1,4 +1,4 @@
-# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.1.0
+# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.1.1
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
@@ -6,11 +6,11 @@ A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-E
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.1.0. Android app: 1.5.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.5.0 APK is in the app repository release.
+**Firmware: v31.1.1. Android app: 1.5.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.5.0 APK is in the app repository release.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v31.1.0 / Android app 1.5.1 (versionCode 8)**.
+Source versions: **HUD firmware v31.1.1 / Android app 1.5.1 (versionCode 8)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
@@ -18,6 +18,13 @@ Source versions: **HUD firmware v31.1.0 / Android app 1.5.1 (versionCode 8)**.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
 These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.1 still supports older firmware: missing controls are disabled. Prebuilt BINs and APKs are published in Releases. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+
+## v31.1.1 changes
+
+- Navigation: the road under the arrow is always filled again. Progress to the manoeuvre is a thin bar above the arrow (blue fill on a dark track, grows as you approach; hidden when the distance is unknown).
+- Display: the "litres to fill" indicator moved to the right to make room for the bar.
+- CAN: USB `Serial` no longer blocks the CAN receive task (`setTxTimeoutMs(0)`), RX queue 512 frames, receive task priority 10, speed timeout 2 s: fixes occasional ~1 s speed dropouts caused by log output.
+- BLE: GATT schema marker 7, so a phone that cached the GATT database before v31 gets a Service Changed indication (camera upload was reported as missing; app 1.5.1 also clears the cache).
 
 ## v31.1.0 changes
 
@@ -67,12 +74,12 @@ Speed-camera alerts (camera icon, distance and limit) in the same renders:
 
 ## Download firmware BIN
 
-[v31.1.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v31.1.0) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/SHA256SUMS-v31.1.0.txt)
+[v31.1.1 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v31.1.1) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.1/SHA256SUMS-v31.1.1.txt)
 
 The platform is selected at build time (`HUD_PLATFORM` in `hud_config.h`), so there are two images:
 
-- [MLB-Evo app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/HUD-SuperMini-v31.1.0-MLB-app.bin) — Audi A4 B9 (MLB-Evo), the tested platform.
-- [MQB app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.0/HUD-SuperMini-v31.1.0-MQB-app.bin) — VAG MQB, **experimental**: only checked on a pre-facelift Octavia A7, some signals are hypotheses.
+- [MLB-Evo app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.1/HUD-SuperMini-v31.1.1-MLB-app.bin) — Audi A4 B9 (MLB-Evo), the tested platform.
+- [MQB app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.1.1/HUD-SuperMini-v31.1.1-MQB-app.bin) — VAG MQB, **experimental**: only checked on a pre-facelift Octavia A7, some signals are hypotheses.
 
 **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; an app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. BLE OTA transfer to the HUD has been confirmed on the real device by the maintainer (v30.0).
 
@@ -95,7 +102,7 @@ WARMW00D supplied these builds: version 1.5.1 (versionCode 8). APK v2 signatures
 | Lane / Side Assist | Lane detection, steering and warnings; red lines for blind-spot indications |
 | Traffic signs | Main sign: valid VZE → explicit PSD → PSD legal limit; additional signs cycle |
 | Overspeed | Speed digits fade smoothly from white to red near the displayed main limit |
-| Navigation | Main maneuver, next maneuver, distance, progress as road fill, destination distance and time |
+| Navigation | Main maneuver, next maneuver, distance, progress bar to the manoeuvre, destination distance and time |
 | Doors / pre sense | Open vehicle parts replace navigation; pre sense has higher priority |
 | Turn signals | Green arrows; hazard lights use red |
 | Fuel | Amount to fill and consumption strip when the required data is available |
@@ -187,7 +194,7 @@ Put `supermini_hud/config/lv_conf.h` next to the installed `lvgl/` directory. Re
 
 **Upgrading v28.x → v30.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
 
-Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.1.0 / BLE OTA` and a next-slot capacity of 2031616.
+Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.1.1 / BLE OTA` and a next-slot capacity of 2031616.
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 

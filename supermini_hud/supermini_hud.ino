@@ -18,6 +18,11 @@ void lvgl_log_cb(const char *buf)
 void setup()
 {
     Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+    /* Native USB CDC: by default print() blocks up to 100 ms when the PC does not read the port.
+       Never stall the tasks (CAN receive among them) because of log output: drop the text instead. */
+    Serial.setTxTimeoutMs(0);
+#endif
     delay(300);
     Serial.println("[fw] HUD Super Mini v" HUD_FW_VERSION_STRING " / BLE OTA");
     /* Legacy duty convention: 255 = dark, 0 = full brightness. */

@@ -279,7 +279,7 @@ static bool cams_update(uint32_t now, const HudData *d, uint16_t *lim_for_speed)
         hit = cam_query(now, d->gps_lat_e6 / 1e6, d->gps_lon_e6 / 1e6, d->gps_hdg_x10 / 10.0f, (float)d->speed_kmh, &h);
         have_last = hit;                                /* запрос шёл и камеры нет — настоящий конец, гасим сразу */
         if (hit) { last_h = h; last_t = now; }
-    } else if (have_last && now - last_t <= 1500) {
+    } else if (g_cams_on && have_last && now - last_t <= 1500) {
         /* gate на миг не выполнился (курс/HDOP/скорость/GNSS мигнули): держим последнее попадание до 1.5 с,
            расстояние уменьшаем по скорости, чтобы на месте камеры не вспыхивал обычный знак */
         float left = last_h.dist_m - d->speed_kmh / 3.6f * ((now - last_t) / 1000.0f);

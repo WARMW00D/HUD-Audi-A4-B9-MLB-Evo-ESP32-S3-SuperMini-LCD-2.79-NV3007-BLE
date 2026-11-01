@@ -270,12 +270,22 @@ static bool cams_update(uint32_t now, const HudData *d, uint16_t *lim_for_speed)
 {
     static uint32_t beeped = 0xFFFFFFFFu;
     cam_hit_t h; bool hit = false;
+    static cam_hit_t last_h; static uint32_t last_t; static bool have_last = false;
     bool gate = g_cams_on && hud_cams_ready()
              && (d->valid & V_GPS) && (d->valid & V_HDG) && (d->valid & V_SPEED)
              && d->gps_fix == 3 && d->gps_sat >= 4 && d->gps_hdop_x10 <= HUD_CAM_MAX_HDOP_X10
              && d->gps_hdg_x10 != 0xFFFF && d->speed_kmh >= HUD_CAM_MIN_SPEED_KMH;
-    if (gate)
+    if (gate) {
         hit = cam_query(now, d->gps_lat_e6 / 1e6, d->gps_lon_e6 / 1e6, d->gps_hdg_x10 / 10.0f, (float)d->speed_kmh, &h);
+        have_last = hit;                                /* запрос шёл и камеры нет — настоящий конец, гасим сразу */
+        if (hit) { last_h = h; last_t = now; }
+    } else if (have_last && now - last_t <= 1500) {
+        /* gate на миг не выполнился (курс/HDOP/скорость/GNSS мигнули): держим последнее попадание до 1.5 с,
+           расстояние уменьшаем по скорости, чтобы на месте камеры не вспыхивал обычный знак */
+        float left = last_h.dist_m - d->speed_kmh / 3.6f * ((now - last_t) / 1000.0f);
+        if (left > 0) { h = last_h; h.dist_m = left; hit = true; }
+        else have_last = false;
+    } else have_last = false;
 
     vis(cm_sq, hit); vis(cm_dist, hit); vis(cm_eye, hit);
     if (hit) vis(sign_obj, false);                      /* знак камеры приоритетнее обычного знака */

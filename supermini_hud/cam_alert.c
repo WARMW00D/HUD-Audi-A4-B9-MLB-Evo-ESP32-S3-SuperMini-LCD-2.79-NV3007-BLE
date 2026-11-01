@@ -27,12 +27,13 @@ typedef struct __attribute__((packed)) {
 
 static const rec_t *s_rec;
 static uint32_t     s_n, s_date;
-static cam_cfg_t    s_cfg = { 12.0f, 200.0f, 600.0f, 35.0f, 50.0f, 0x001 };
+static cam_cfg_t    s_cfg = { 12.0f, 200.0f, 600.0f, 22.0f, 35.0f, 0x001 };
 static uint32_t     s_active = 0xFFFFFFFFu;          /* камера, за которой уже следим (гистерезис) */
 
 /* Защита от ложных оповещений и поправка на задержку позиции */
 #ifndef CAM_LEAD_S
-#define CAM_LEAD_S      0.5f    /* позиция GNSS из шины отстаёт примерно на 0.6 с: экстраполируем вперёд */
+#define CAM_LEAD_S      1.4f    /* позиция GNSS из шины отстаёт больше секунды: экстраполируем вперёд.
+                                   Камера «висит» после проезда — добавить 0.2–0.3, гаснет раньше — убавить */
 #endif
 #ifndef CAM_TURN_NEW_DEG
 #define CAM_TURN_NEW_DEG 12.0f  /* курс за последние ~2 с изменился больше — новую камеру не показываем (поворот) */
@@ -152,7 +153,7 @@ bool cam_query(uint32_t now_ms, double lat, double lon, float hdg_deg, float spe
                     if (Rr > R) Rr = R;
                     if (along > Rr) continue;
                 }
-                if (cross > (i == s_active ? s_cfg.cross_m * 1.7f : s_cfg.cross_m)) continue;
+                if (cross > (i == s_active ? s_cfg.cross_m * 1.5f : s_cfg.cross_m)) continue;
                 if (r->dir != 0xFFFF) {
                     float d = fabsf(fmodf((float)r->dir - hdg_deg + 540.0f, 360.0f) - 180.0f);
                     if (d > s_cfg.dir_deg) continue;

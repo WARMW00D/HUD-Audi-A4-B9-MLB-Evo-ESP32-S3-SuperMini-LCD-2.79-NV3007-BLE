@@ -22,6 +22,7 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.
 ## v31.1.1 changes
 
 - Navigation: the road under the arrow is always filled again. Progress to the manoeuvre is a thin bar above the arrow (blue fill on a dark track, grows as you approach; hidden when the distance is unknown).
+- Speed cameras: position look-ahead raised from 0.5 to 1.4 s (a camera no longer "hangs" after you pass it at high speed), tighter lateral/heading tolerance (22 m / 35°, was 35 m / 50°), gate flicker holds the last camera for up to 1.5 s with the distance still counting down. Tune `CAM_LEAD_S` in `cam_alert.c` after a real drive.
 - ACC: the radar waves are drawn whenever the own car icon is green (ACC regulating), also without a car ahead, as on the instrument cluster.
 - Display: the "litres to fill" indicator moved to the right to make room for the bar.
 - CAN: USB `Serial` no longer blocks the CAN receive task (`setTxTimeoutMs(0)`), RX queue 512 frames, receive task priority 10, speed timeout 2 s: fixes occasional ~1 s speed dropouts caused by log output.

@@ -4,11 +4,14 @@
 #ifndef HUD_CONFIG_H
 #define HUD_CONFIG_H
 
-/* Внутренняя версия прошивки: major.minor.fix. */
+/* Внутренняя версия прошивки: major.minor.fix. Менять только эти три числа,
+   строка версии для баннера и README собирается из них. */
 #define HUD_FW_VERSION_MAJOR  31
 #define HUD_FW_VERSION_MINOR  1
-#define HUD_FW_VERSION_FIX    0
-#define HUD_FW_VERSION_STRING "31.1.1"
+#define HUD_FW_VERSION_FIX    1
+#define HUD_FW_STR_(x) #x
+#define HUD_FW_STR(x)  HUD_FW_STR_(x)
+#define HUD_FW_VERSION_STRING HUD_FW_STR(HUD_FW_VERSION_MAJOR) "." HUD_FW_STR(HUD_FW_VERSION_MINOR) "." HUD_FW_STR(HUD_FW_VERSION_FIX)
 
 /* ---- Платформа автомобиля ----
    HUD_PLATFORM_MLB_EVO — Audi A4 B9 и другие MLB-Evo (I-CAN, 500 кбит/с)

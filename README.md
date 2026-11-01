@@ -6,11 +6,11 @@ A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-E
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.1.0. Android app: 1.5.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.5.0 APK is in the app repository release.
+**Firmware: v31.1.0. Android app: 1.5.1.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.5.0 APK is in the app repository release.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v31.1.0 / Android app 1.5.0 (versionCode 7)**.
+Source versions: **HUD firmware v31.1.0 / Android app 1.5.1 (versionCode 8)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
@@ -24,7 +24,7 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.
 - Display: new `HUD_LCD_MIRROR_X` option in `user_config.h` (default 0). `1` mirrors the picture horizontally, for a HUD that is read in a windshield reflection. The mirror is done in software in the display flush, in both the DMA and the blocking path.
 - Navigation: the small next-manoeuvre arrow now follows the distance text instead of sitting in the corner of the navigation area (it was partly clipped and could lie on the ACC icon). With ACC active a long distance string and the arrow shift left together to stay clear of the icon.
 - Tools: `tools/fonts/make_fonts.py` now uses the font sizes of the shipped `hud_font_*.c` files (speed 96 instead of 116, and so on), so regenerating the fonts gives identical files.
-- Documentation: MLB-Evo screenshots rendered from real A4 logs (navigation, ACC, Lane Assist, speed cameras); the schematics and README name the bus (Infotainment CAN for MLB-Evo, Comfort CAN for MQB) and the CAN wire colours; the Android app 1.5.0 links point to its own release.
+- Documentation: MLB-Evo screenshots rendered from real A4 logs (navigation, ACC, Lane Assist, speed cameras); the schematics and README name the bus (Infotainment CAN for MLB-Evo, Comfort CAN for MQB) and the CAN wire colours; the Android app 1.5.1 links point to its own release.
 
 ## v31.0.0 changes
 
@@ -35,7 +35,7 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.
 - Navigation: arrows and roads are taken from the Waveshare project (`tools/gen_nav_images.py`, native 192 × 116 area). The side distance bar is removed and its space is used by the larger arrow area. The distance to the manoeuvre now stands on the level of the ACC speed. The road is empty when the manoeuvre is far and fills with the standard grey from the bottom up as the car approaches (same `bargraph` data the bar used). The camera distance uses the larger route font, written without a space (`330м` / `330m`).
 - Speed cameras: GPS position and heading come from the car's CAN (NavPos_01 0x486, NavData_01 0x484). The database `cams.bin` (from `gen_cams.py`) lives in the W25Q128 flash and is loaded into PSRAM at start-up; `cam_alert` finds the nearest camera ahead by binary search, no index file is needed. The sign (yellow square, limit disc, camera icon, distance) and the speed-digit colouring follow the Waveshare design; a warning sound plays when the speed is over the camera limit (`HUD_CAMS`, `HUD_CAM_*` in `hud_config.h`).
 - Camera display, camera warning sound and sound volume (0–100 %, 0 = silent) are switchable from the Android app (new BLE settings `…000D`, `…000E`, `…000F`, kept in NVS).
-- Camera database upload from the Android app over BLE, streamed with automatic resume and no restart: `docs/CAMS_UPLOAD.md`. Needs app **1.5.0**.
+- Camera database upload from the Android app over BLE, streamed with automatic resume and no restart: `docs/CAMS_UPLOAD.md`. Needs app **1.5.0 or newer**.
 - MQB (early support): new `HUD_PLATFORM` switch in `hud_config.h` (`HUD_PLATFORM_MLB_EVO` by default, or `HUD_PLATFORM_MQB`). On MQB the ACL and decoder take ACC from `0x2A7` / `0x30C` (active state, set speed, vehicle ahead), skip the absent `0x2A9` / `0x64F` and read the brightness regulator from `0x5F0`. Tested only on replayed logs of a Skoda Octavia A7; see "Vehicle platform: MLB-Evo and MQB" below for the signal table and open points.
 
 ## v30.0.1 changes
@@ -78,13 +78,13 @@ The platform is selected at build time (`HUD_PLATFORM` in `hud_config.h`), so th
 
 ## Download Android APK
 
-[Version 1.5.0](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.5.0) — real-device OTA has been confirmed by the maintainer.
+[Version 1.5.1](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/tag/v1.5.1) — real-device OTA has been confirmed by the maintainer.
 
-- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/HUD-Control-1.5.0-release.apk) — normal installation.
-- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/HUD-Control-1.5.0-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.5.0-debug.apk`.
-- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.0/SHA256SUMS-1.5.0.txt).
+- [Release APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.1/HUD-Control-1.5.1-release.apk) — normal installation.
+- [Debug APK](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.1/HUD-Control-1.5.1-debug.apk) — `testOnly=true`: `adb install -r -t HUD-Control-1.5.1-debug.apk`.
+- [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App/releases/download/v1.5.1/SHA256SUMS-1.5.1.txt).
 
-WARMW00D supplied these builds: version 1.5.0 (versionCode 7). APK v2 signatures and content digests were verified. Each flavor retains its previous signing key: release updates release and debug updates debug. Switching flavors requires uninstalling the app and loses its local settings.
+WARMW00D supplied these builds: version 1.5.1 (versionCode 8). APK v2 signatures and content digests were verified. Each flavor retains its previous signing key: release updates release and debug updates debug. Switching flavors requires uninstalling the app and loses its local settings.
 
 ## What the HUD shows
 

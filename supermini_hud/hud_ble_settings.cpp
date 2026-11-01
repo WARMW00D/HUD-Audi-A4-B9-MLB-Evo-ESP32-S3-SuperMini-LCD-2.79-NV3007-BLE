@@ -316,9 +316,9 @@ void hud_ble_settings_begin() {
     hud_ble_cams_begin(server, ota_authorized_handle);
     if (!server->start()) abort();
     // The bonded Android may cache the pre-OTA GATT database.
-    if (prefs.getUChar("gatt-schema", 0) != 6) {
+    if (prefs.getUChar("gatt-schema", 0) != 7) {
         server->sendServiceChangedIndication();
-        if (prefs.putUChar("gatt-schema", 6) != 1) Serial.println("[settings] Could not save GATT schema marker.");
+        if (prefs.putUChar("gatt-schema", 7) != 1) Serial.println("[settings] Could not save GATT schema marker.");
     }
     Lock lock; advertise();
     Serial.printf("[settings] ready; BOOT GPIO%d, owner=%s\n", HUD_SETTINGS_BOOT_PIN, state.owned ? "saved" : "none");

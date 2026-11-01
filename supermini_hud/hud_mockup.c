@@ -632,7 +632,9 @@ static void hud_update_cb(lv_timer_t *t)
     bool obj = obj_warn || (acc_on && d.acc_object == 1);
     vis(as_front, obj);
     if (obj) set_img_color(as_front, obj_warn ? C_OBJ_WARN : acc_col);
-    bool arcs = obj && (d.acc_status == 3 || d.acc_status == 4);
+    /* радар (волны): всегда, пока наша машина зелёная (ACC регулирует, status 3), даже если впереди нет машины;
+       при status 4 (водитель превысил, значок белый) — только с машиной впереди, как раньше */
+    bool arcs = (acc_on && d.acc_status == 3) || (obj && d.acc_status == 4);
     vis(as_arcs, arcs);
     if (arcs) set_img_color(as_arcs, acc_col);
 

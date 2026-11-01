@@ -22,6 +22,7 @@ These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.
 ## v31.1.1 changes
 
 - Navigation: the road under the arrow is always filled again. Progress to the manoeuvre is a thin bar above the arrow (blue fill on a dark track, grows as you approach; hidden when the distance is unknown).
+- ACC: the radar waves are drawn whenever the own car icon is green (ACC regulating), also without a car ahead, as on the instrument cluster.
 - Display: the "litres to fill" indicator moved to the right to make room for the bar.
 - CAN: USB `Serial` no longer blocks the CAN receive task (`setTxTimeoutMs(0)`), RX queue 512 frames, receive task priority 10, speed timeout 2 s: fixes occasional ~1 s speed dropouts caused by log output.
 - BLE: GATT schema marker 7, so a phone that cached the GATT database before v31 gets a Service Changed indication (camera upload was reported as missing; app 1.5.1 also clears the cache).

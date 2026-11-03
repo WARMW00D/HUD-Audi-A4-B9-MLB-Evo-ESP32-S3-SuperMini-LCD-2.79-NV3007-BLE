@@ -36,6 +36,7 @@ from PIL import Image
 
 SKIP = {"merge_l", "merge_r", "turn_r000"}   # не используются; «прямо» рисует approach (без скруглённого тупика)
 CROP = (68, 39, 260, 180)                    # общая рамка содержимого во всех кадрах 328x180 (проверено по всем кадрам)
+SMOOTH = {"approach": 36}                    # «прямо»: исходных кадров мало (13) — досчитываем до N смешиванием соседних
 DIFF = 2                                     # пиксель отличается от пола больше, чем на это — рисуется
 
 
@@ -65,6 +66,11 @@ def main():
     def mask_of(c):
         return np.abs(c - bg).max(2) > DIFF
 
+    def blend(n, k, j, kk):                      # кадр j из kk: линейная интерполяция по исходным k кадрам
+        t = j * (k - 1) / (kk - 1)
+        i = min(int(t), k - 2); f = t - i
+        return np.rint(load(n, i) * (1 - f) + load(n, i + 1) * f).astype(np.int32)
+
     pix = []
     for n, k in names:
         for i in range(0, k, 2):
@@ -87,9 +93,10 @@ def main():
 
     frames, anim = [], []
     for n, k in names:
-        anim.append((n, k, len(frames)))
-        for i in range(k):
-            c = load(n, i)
+        kk = SMOOTH.get(n, k)
+        anim.append((n, kk, len(frames)))
+        for i in range(kk):
+            c = blend(n, k, i, kk) if kk != k else load(n, i)
             dist = ((c[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(3)
             idx = dist.argmin(2).astype(np.uint8)
             idx[~mask_of(c)] = 0

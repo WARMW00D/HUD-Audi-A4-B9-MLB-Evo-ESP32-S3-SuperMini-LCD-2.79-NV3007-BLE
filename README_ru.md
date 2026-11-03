@@ -338,6 +338,7 @@ g++ -std=c++17 -Wno-deprecated-declarations -Itests/settings_stubs tests/test_bl
 - **WARMW00D (Warmwood):** владелец проекта, интеграция железа, автомобильные логи и испытания.
 - **Claude (Anthropic):** помощь в разработке исходного проекта Waveshare, указанная в его README.
 - **OpenAI Codex / ChatGPT:** помощь с адаптацией SuperMini/NV3007, настройками BLE, Android RU/EN, BLE OTA, host-тестами, схемой и документацией. Изменения требуют проверки владельцем проекта и испытаний на железе.
+- **[chefranov](https://github.com/chefranov/mhi2-au37x-carplay):** благодарность за анимацию стрелок навигации (анимированные стрелки, `arrows.bin`).
 - [CAN-сниффер/шлюз](https://github.com/WARMW00D/esp32-CAN-sniffer-logger-screener), opendbc/openpilot и revag-bap — транспорт данных и справочники сигналов/протоколов.
 - Waveshare — исходный проект; Arduino_GFX, LVGL и NimBLE-Arduino — библиотеки дисплея и BLE.
 - Montserrat и Roboto Condensed — SIL OFL 1.1, лицензии в `supermini_hud/tools/fonts/`.

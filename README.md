@@ -339,6 +339,7 @@ If you do not agree with these terms, do not build or use the Project.
 - **WARMW00D (Warmwood):** project owner, hardware integration, vehicle logs and testing.
 - **Claude (Anthropic):** development assistance acknowledged by the original Waveshare project.
 - **OpenAI Codex / ChatGPT:** assistance with the SuperMini/NV3007 adaptation, BLE settings, Android RU/EN app, BLE OTA, host tests, wiring diagrams and documentation. Generated changes still require maintainer review and hardware validation.
+- **[chefranov](https://github.com/chefranov/mhi2-au37x-carplay):** thanks for the navigation arrow animation used in the animated arrows (`arrows.bin`).
 - [CAN sniffer/gateway](https://github.com/WARMW00D/esp32-CAN-sniffer-logger-screener), opendbc/openpilot and revag-bap — data transport and signal/protocol references.
 - Waveshare — original project context; Arduino_GFX, LVGL and NimBLE-Arduino — display and BLE libraries.
 - Montserrat and Roboto Condensed — fonts under SIL OFL 1.1, licenses in `supermini_hud/tools/fonts/`.

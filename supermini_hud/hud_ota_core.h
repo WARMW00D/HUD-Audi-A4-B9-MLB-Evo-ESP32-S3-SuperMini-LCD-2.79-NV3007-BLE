@@ -21,7 +21,7 @@ public:
 };
 class HudOtaCore {
     HudOtaStorage &storage;
-    const bool esp_image_;      // true: OTA of an ESP32-S3 app; false: camera database "CAM1"
+    const bool esp_image_;      // true: OTA of an ESP32-S3 app; false: camera database "CAM1" or arrow animations "ANM1"
     HudOtaState state_ = HudOtaState::Idle;
     HudOtaError error_ = HudOtaError::None;
     uint32_t total_ = 0, received_ = 0;
@@ -95,8 +95,11 @@ public:
                     fail(HudOtaError::Image); return;
                 }
             } else {
-                // cams.bin: "CAM1", count, date, reserved, 12-byte records.
-                if (n<16 || memcmp(p,"CAM1",4)!=0 || total_!=16u+12u*get32(p+4)) {
+                // cams.bin: "CAM1", count, date, reserved, 12-byte records;
+                // arrows.bin: "ANM1", W, H, animations, file size at offset 12 (tools/gen_arrow_anim.py).
+                const bool cam = n>=16 && memcmp(p,"CAM1",4)==0 && total_==16u+12u*get32(p+4);
+                const bool anm = n>=20 && memcmp(p,"ANM1",4)==0 && total_==get32(p+12);
+                if (!cam && !anm) {
                     fail(HudOtaError::Image); return;
                 }
             }

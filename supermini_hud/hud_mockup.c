@@ -37,6 +37,7 @@
 #include "psd_speedlimit.h"
 #include "cam_alert.h"
 #include "hud_cams.h"
+#include "hud_anim.h"
 #include "hud_sound.h"
 #include "src/lcd_bl_bsp/lcd_bl_pwm_bsp.h"
 
@@ -80,6 +81,8 @@ extern "C" {
 #define SIGN_RING    7     /* толщина красного кольца */
 #define C_SIGN_WARN  0xff8080
 #define PROG_W 176
+#define ANIM_W 160          /* кадры arrows.bin: размер задаёт tools/gen_arrow_anim.py (--w/--h), px панели */
+#define ANIM_Y 11          /* над кадром (высота 101 px) — бар прогресса, под ним — строка дистанции */
 #define C_NAV_ARROW  0x30b0f0   /* Audi-style blue */
 #define C_NAV_ROAD   0xffffff   /* дорожный слой: серая заливка + белая кайма в маске */
 #define C_NAV_NEXT   0xa8a8a8
@@ -101,6 +104,7 @@ static lv_obj_t *ps_box, *ps_tri;           /* предупреждение pre 
 #define ACC_Y        (172 - ACC_SQ)   /* самый низ экрана, подальше от дистанции до манёвра */
 static lv_obj_t *acc_sq[2][ACC_SEG];
 static lv_obj_t *prog_bg, *prog_fill;
+static lv_obj_t *anim_img;              /* анимированная стрелка из arrows.bin (на всю высоту панели), см. hud_anim.h */
 static lv_obj_t *arrow_ph, *road_outline, *road_clip, *arrow_road, *arrow_img, *arrow_lbl, *nav_dist_lbl, *next_img;
 static lv_obj_t *route_icon, *route_lbl;
 static lv_obj_t *speed_lbl;
@@ -308,7 +312,7 @@ static bool cams_update(uint32_t now, const HudData *d, uint16_t *lim_for_speed)
         beeped = h.idx;
         arduino_printf("[cam] #%lu limit %u at %.0f m, v=%u, hdg %u/cam %d\n", (unsigned long)h.idx, h.limit,
                        h.dist_m, d->speed_kmh, d->gps_hdg_x10 / 10, (int)h.dir_deg);
-        if (g_cam_beep && h.limit && d->speed_kmh > h.limit) hud_sound_play(HUD_SND_WARN);
+        if (g_cam_beep && h.limit && d->speed_kmh > h.limit) hud_sound_play(HUD_SND_CAM);
     }
     if (h.limit && h.dist_m <= HUD_CAM_OVERSPEED_M && (*lim_for_speed == 0 || h.limit < *lim_for_speed))
         *lim_for_speed = h.limit;
@@ -883,6 +887,32 @@ static void hud_update_cb(lv_timer_t *t)
         next_cur = n2;
         vis(next_img, n2 != NULL);
     }
+#if HUD_ANIM
+    /* Анимированная стрелка: цикл всех кадров анимации манёвра за HUD_ANIM_PERIOD_MS, по кругу; прогресс до манёвра
+       показывает бар над ней. Нет файла, нет анимации под этот манёвр или чтение занято заливкой — рисуются
+       обычные стрелки (с баром, как и с анимацией). */
+    bool anim_on = false;
+    if (nav && hud_anim_ready()) {
+        static int a_cur = -1, a_frame = -1, a_shown = -1;
+        static uint32_t a_t0;
+        char nm[32];
+        int ai = hud_anim_name(nm, sizeof nm, d.man_main, d.man_dir, HUD_LEFT_HAND_TRAFFIC) ? hud_anim_find(nm) : -1;
+        if (ai >= 0) {
+            int nf = hud_anim_frames(ai);
+            if (ai != a_cur) a_t0 = now;                          /* смена манёвра — цикл с первого кадра */
+            int fr = (int)((((now - a_t0) % HUD_ANIM_PERIOD_MS) * (uint32_t)nf) / HUD_ANIM_PERIOD_MS);
+            if (ai != a_shown || fr != a_frame) {
+                const lv_img_dsc_t *dsc = hud_anim_frame(ai, fr);
+                if (dsc) { lv_img_set_src(anim_img, dsc); a_shown = ai; a_cur = ai; a_frame = fr; }
+            }
+            anim_on = (a_shown == ai);
+        }
+        if (!anim_on) { a_shown = -1; a_cur = -1; a_frame = -1; }
+    }
+    vis(anim_img, anim_on);
+#else
+    const bool anim_on = false;
+#endif
     vis(arrow_ph, nav);
     if (!nav) { vis(prog_bg, false); vis(prog_fill, false); }   /* бар — вне arrow_ph, прячем вместе с областью */
     if (nav) {
@@ -921,6 +951,10 @@ static void hud_update_cb(lv_timer_t *t)
             }
         }
         vis(arrow_img, ni != NULL);
+        if (anim_on) {                                  /* вместо обычной стрелки, дороги и бара */
+            vis(arrow_img, false); vis(arrow_road, false); vis(road_clip, false);
+            vis(road_outline, false);
+        }
         vis(arrow_lbl, ni == NULL && calc);             /* расчёт маршрута; 0x00/0x01 — пусто */
 
 #if HUD_LOG_BAP
@@ -1146,6 +1180,13 @@ void build_hud_mockup(void)
     /* Стрелка (заглушка текстом) */
     /* Стрелка навигации: картинка (hud_nav_images, 4-бит маски) + дистанция
        до манёвра под ней. Область 128x140: стрелка уменьшена в 1.5 раза, строка — ниже. */
+#if HUD_ANIM
+    /* создаём до области стрелки: подпись дистанции и значки лежат поверх кадра */
+    anim_img = lv_img_create(scr);
+    lv_obj_set_pos(anim_img, hud_native_x(LX + 122) + (hud_native_x(NAV_AREA_W) - ANIM_W) / 2, ANIM_Y);
+    lv_obj_clear_flag(anim_img, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(anim_img, LV_OBJ_FLAG_HIDDEN);
+#endif
     arrow_ph = lv_obj_create(scr);
     lv_obj_remove_style_all(arrow_ph);
     hud_native_set_size(arrow_ph, NAV_AREA_W, 166);   /* до низа раскладки: строка дистанции стоит на уровне скорости ACC */

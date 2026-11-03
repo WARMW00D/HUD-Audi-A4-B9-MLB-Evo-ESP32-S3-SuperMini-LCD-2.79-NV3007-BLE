@@ -8,6 +8,9 @@
   сигнатурой, перечитывание базы из флеши в PSRAM, повторная проверка SHA-256).
   Перезагрузка HUD не нужна. Первая страница (с "CAM1") пишется последней: оборванная
   загрузка оставляет «пустую» флешь, а не наполовину записанную базу.
+  Тем же путём заливается файл анимированных стрелок arrows.bin (сигнатура "ANM1"): тип определяется
+  по первой странице, файл ложится с адреса HUD_ANIM_FLASH_ADDR, а вместо базы камер перечитывается
+  hud_anim_flash_reload().
 */
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -17,6 +20,7 @@
 #include "hud_ble_cams.h"
 #include "hud_ota_core.h"
 #include "hud_cams.h"
+#include "hud_anim.h"
 #include "hud_config.h"
 
 #if HUD_CAMS
@@ -28,8 +32,8 @@ static const char *CAM_DATA="74d0a200-3d92-4f50-9b1a-478142000013";
 class CamStorage : public HudOtaStorage {
     mbedtls_sha256_context sha={};
     uint8_t page[256], hold0[256], digest[32];
-    uint32_t pos=0, total=0;
-    bool hashing=false, active=false;
+    uint32_t pos=0, total=0, base=0;      // base — адрес начала файла во флеши (0 — камеры, HUD_ANIM_FLASH_ADDR — стрелки)
+    bool hashing=false, active=false, anim=false, typed=false;
 
     bool sha_update(const uint8_t *d,size_t n) {
 #if MBEDTLS_VERSION_MAJOR >= 3
@@ -39,22 +43,33 @@ class CamStorage : public HudOtaStorage {
 #endif
     }
     /* Страница [base, base+256): первая держится в RAM до COMMIT */
-    bool flush(uint32_t base) {
-        if (base==0) { memcpy(hold0,page,256); }
+    bool flush(uint32_t rel) {
+        if (rel==0) { memcpy(hold0,page,256); }
         else {
-            if (!(base&4095) && !hud_cams_flash_erase(base)) return false;
-            if (!hud_cams_flash_write(base,page,256)) return false;
+            if (!(rel&4095) && !hud_cams_flash_erase(base+rel)) return false;
+            if (!hud_cams_flash_write(base+rel,page,256)) return false;
         }
         memset(page,0xFF,sizeof page);
         return true;
     }
+    /* Первая страница пришла целиком: понять, что это (CAM1 или ANM1), проверить размер и стереть
+       первый сектор — старая сигнатура исчезает сразу. */
+    bool detect() {
+        if (!memcmp(page,"CAM1",4)) { anim=false; base=0; if (total>hud_cams_max_db_bytes()) return false; }
+        else if (!memcmp(page,"ANM1",4)) { anim=true; base=HUD_ANIM_FLASH_ADDR; if (total>hud_anim_flash_max_bytes()) return false; hud_anim_close(); }
+        else return false;
+        typed=true;
+        return hud_cams_flash_erase(base);
+    }
 public:
-    uint32_t capacity() const override { return hud_cams_max_db_bytes(); }
+    uint32_t capacity() const override {
+        const uint32_t a=hud_anim_flash_max_bytes(), c=hud_cams_max_db_bytes();
+        return a>c?a:c;                                         // точный предел по типу — в detect()
+    }
     bool begin(uint32_t size) override {
         abort();
         if (!size || size>capacity()) return false;
         memset(page,0xFF,sizeof page); memset(hold0,0xFF,sizeof hold0);
-        if (!hud_cams_flash_erase(0)) return false;           // старая сигнатура исчезает сразу
         mbedtls_sha256_init(&sha); hashing=true;
 #if MBEDTLS_VERSION_MAJOR >= 3
         const int r=mbedtls_sha256_starts(&sha,0);
@@ -62,7 +77,7 @@ public:
         const int r=mbedtls_sha256_starts_ret(&sha,0);
 #endif
         if (r) { abort(); return false; }
-        pos=0; total=size; active=true;
+        pos=0; total=size; base=0; anim=typed=false; active=true;
         return true;
     }
     bool write(const uint8_t *d,size_t n) override {
@@ -72,12 +87,18 @@ public:
             size_t k=256-in_page; if (k>n) k=n;
             memcpy(page+in_page,d,k);
             pos+=k; d+=k; n-=k;
-            if (!(pos&255) && !flush(pos-256)) return false;
+            if (!(pos&255)) {
+                if (pos==256 && !detect()) return false;       // не CAM1/ANM1 или не влезает во флешь
+                if (!flush(pos-256)) return false;
+            }
         }
         return true;
     }
     HudOtaError finish(const uint8_t expected[32]) override {
         if (!active || !hashing || pos!=total) return HudOtaError::State;
+        if (pos<256 && !typed) {                                  // файл короче страницы: проверим тип по тому, что есть
+            if (!detect()) return HudOtaError::Storage;
+        }
         if ((pos&255) && !flush(pos&~255u)) return HudOtaError::Storage;
         uint8_t actual[32];
 #if MBEDTLS_VERSION_MAJOR >= 3
@@ -94,8 +115,8 @@ public:
     }
     bool commit() override {
         if (!active || hashing) return false;
-        if (!hud_cams_flash_write(0,hold0,256)) return false;   // сигнатура и заголовок — последними
-        return hud_cams_reload(digest,total);
+        if (!hud_cams_flash_write(base,hold0,256)) return false;   // сигнатура и заголовок — последними
+        return anim ? hud_anim_flash_reload(digest,total) : hud_cams_reload(digest,total);
     }
     void abort() override {
         if (hashing) mbedtls_sha256_free(&sha);

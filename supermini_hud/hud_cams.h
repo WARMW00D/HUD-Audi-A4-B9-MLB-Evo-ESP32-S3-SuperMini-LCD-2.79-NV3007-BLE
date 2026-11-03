@@ -30,6 +30,9 @@ bool     hud_cams_flash_write(uint32_t addr, const uint8_t *d, size_t n); /* n <
 /* Выгрузить текущую базу, прочитать новую из флеши (len байт с адреса 0), проверить SHA-256
    (expect_sha != NULL) и формат, включить. false — камеры останутся выключены до следующей загрузки. */
 bool     hud_cams_reload(const uint8_t *expect_sha, size_t len);
+/* Анимированные стрелки (arrows.bin с адреса HUD_ANIM_FLASH_ADDR): ёмкость под файл и перечитывание после заливки */
+uint32_t hud_anim_flash_max_bytes(void);                                 /* 0 — флеши нет или анимации выключены */
+bool     hud_anim_flash_reload(const uint8_t *expect_sha, size_t len);   /* проверить SHA-256 по флеши и открыть */
 #ifdef __cplusplus
 }
 #endif

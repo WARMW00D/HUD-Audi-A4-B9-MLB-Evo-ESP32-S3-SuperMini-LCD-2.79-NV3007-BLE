@@ -17,6 +17,7 @@ typedef enum {
     HUD_SND_DOUBLE,     /* two short beeps                     */
     HUD_SND_RISING,     /* three rising tones (startup / info) */
     HUD_SND_WARN,       /* three fast high beeps (warning)     */
+    HUD_SND_CAM,        /* one short low beep (speed camera)   */
     HUD_SND_COUNT
 } hud_sound_t;
 

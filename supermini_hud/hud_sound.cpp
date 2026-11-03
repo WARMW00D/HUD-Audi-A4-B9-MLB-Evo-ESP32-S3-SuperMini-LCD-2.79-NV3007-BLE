@@ -14,10 +14,11 @@ static const Note kBeep[]   = {{2400, 80}};
 static const Note kDouble[] = {{2400, 70}, {0, 70}, {2400, 70}};
 static const Note kRising[] = {{1500, 80}, {0, 20}, {2000, 80}, {0, 20}, {2600, 120}};
 static const Note kWarn[]   = {{3000, 110}, {0, 70}, {3000, 110}, {0, 70}, {3000, 110}};
+static const Note kCam[]    = {{300, 100}};           /* камера: одиночный низкий пик */
 
 struct Pattern { const Note *n; uint8_t len; };
 #define PAT(a) { a, (uint8_t)(sizeof(a) / sizeof(a[0])) }
-static const Pattern kPatterns[HUD_SND_COUNT] = { PAT(kBeep), PAT(kDouble), PAT(kRising), PAT(kWarn) };
+static const Pattern kPatterns[HUD_SND_COUNT] = { PAT(kBeep), PAT(kDouble), PAT(kRising), PAT(kWarn), PAT(kCam) };
 
 #define SND_TIMER   LEDC_TIMER_2
 #define SND_CHANNEL LEDC_CHANNEL_2      /* backlight uses timer 3 / channel 1 */

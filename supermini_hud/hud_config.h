@@ -7,8 +7,8 @@
 /* Внутренняя версия прошивки: major.minor.fix. Менять только эти три числа,
    строка версии для баннера и README собирается из них. */
 #define HUD_FW_VERSION_MAJOR  31
-#define HUD_FW_VERSION_MINOR  1
-#define HUD_FW_VERSION_FIX    1
+#define HUD_FW_VERSION_MINOR  2
+#define HUD_FW_VERSION_FIX    0
 #define HUD_FW_STR_(x) #x
 #define HUD_FW_STR(x)  HUD_FW_STR_(x)
 #define HUD_FW_VERSION_STRING HUD_FW_STR(HUD_FW_VERSION_MAJOR) "." HUD_FW_STR(HUD_FW_VERSION_MINOR) "." HUD_FW_STR(HUD_FW_VERSION_FIX)
@@ -113,6 +113,14 @@
    hud_set_cams() / hud_set_cam_beep(). */
 #define HUD_CAMS                  1
 #define HUD_CAMS_ON               1      /* камеры показываются по умолчанию */
+
+/* ---- Анимированные стрелки навигации (arrows.bin, формат ANM1, tools/gen_arrow_anim.py) ----
+   Файл лежит во флеш-памяти W25Q128 с адреса HUD_ANIM_FLASH_ADDR (база камер — с адреса 0 и не больше 8 МБ)
+   и заливается с телефона тем же путём, что и cams.bin. Нет файла — обычные стрелки с баром. */
+#define HUD_ANIM                  1
+#define HUD_ANIM_FLASH_ADDR       0x800000u
+#define HUD_ANIM_PERIOD_MS        2000   /* один проход анимации (все кадры) по кругу, мс */
+#define HUD_LEFT_HAND_TRAFFIC     0      /* 1 — левостороннее движение (кольца и развороты lht) */
 #define HUD_CAM_TYPE_MASK         0x001  /* какие типы камер: бит = индекс типа в cams.bin.
                                             0 = стационарные камеры, 8 = посты ДПС, остальные — см. tools/gen_cams.py */
 #define HUD_CAM_AHEAD_S           12     /* окно оповещения: секунд хода...                    */

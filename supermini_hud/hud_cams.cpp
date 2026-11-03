@@ -17,6 +17,7 @@
 #include "hud_config.h"
 #include "hud_log.h"
 #include "hud_cams.h"
+#include "hud_anim.h"
 extern "C" {
 #include "cam_alert.h"
 }
@@ -191,10 +192,50 @@ static bool load_locked(const uint8_t *expect_sha, size_t want_len)
     return ok;
 }
 
+
+/* ---- arrows.bin: чтение кадров прямо из флеши ---- */
+#if HUD_ANIM
+static uint8_t *s_adma;                                         /* DMA-буфер чтения кадров (под s_lock или его владельцем) */
+
+/* Читает для hud_anim: из задачи, которая уже держит s_lock (открытие под замком) — без повторного захвата,
+   из задачи LVGL — с коротким ожиданием; false — шина занята (идёт заливка), кадр пропускается. */
+static bool anim_read(uint32_t addr, uint8_t *dst, size_t len)
+{
+    if (!s_lock || s_open_state <= 0) return false;
+    bool mine = xSemaphoreGetMutexHolder(s_lock) == xTaskGetCurrentTaskHandle();
+    if (!mine && xSemaphoreTake(s_lock, 5) != pdTRUE) return false;
+    bool ok = true;
+    if (!s_adma) s_adma = (uint8_t *)heap_caps_malloc(CHUNK, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!s_adma) ok = false;
+    else ok = flash_read(addr, dst, len, s_adma);
+    if (!mine) xSemaphoreGive(s_lock);
+    return ok;
+}
+
+static uint32_t anim_room(void)
+{
+    return s_capacity > HUD_ANIM_FLASH_ADDR ? s_capacity - HUD_ANIM_FLASH_ADDR : 0;
+}
+
+/* Открыть arrows.bin, если он есть. Вызывать под s_lock, флешь открыта. */
+static void anim_open_locked(void)
+{
+    if (hud_anim_open(anim_read, HUD_ANIM_FLASH_ADDR, anim_room()))
+        arduino_printf("[anim] arrows.bin loaded: %ux%u, %u bytes\n", (unsigned)hud_anim_width(), (unsigned)hud_anim_height(), (unsigned)hud_anim_size());
+    else
+        hud_log_write("[anim] no arrows.bin in flash, using static arrows\n");
+}
+#endif
+
 static void load_task(void *)
 {
     xSemaphoreTake(s_lock, portMAX_DELAY);
-    if (flash_open()) load_locked(NULL, 0);
+    if (flash_open()) {
+        load_locked(NULL, 0);
+#if HUD_ANIM
+        anim_open_locked();
+#endif
+    }
     xSemaphoreGive(s_lock);
     vTaskDelete(NULL);
 }
@@ -267,6 +308,70 @@ extern "C" bool hud_cams_reload(const uint8_t *expect_sha, size_t len)
     return ok;
 }
 
+extern "C" uint32_t hud_anim_flash_max_bytes(void)
+{
+#if HUD_ANIM
+    if (!s_lock) return 0;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    uint32_t room = flash_open() ? anim_room() : 0;
+    xSemaphoreGive(s_lock);
+    return room;
+#else
+    return 0;
+#endif
+}
+
+extern "C" bool hud_anim_flash_reload(const uint8_t *expect_sha, size_t len)
+{
+#if HUD_ANIM
+    if (!s_lock) return false;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    hud_anim_close();
+    vTaskDelay(pdMS_TO_TICKS(30));                              /* дать LVGL закончить кадр, который уже читался */
+    bool ok = flash_open() && len >= 128 && len <= anim_room();
+    if (ok && expect_sha) {
+        uint8_t *dma = (uint8_t *)heap_caps_malloc(CHUNK, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+        uint8_t *tmp = (uint8_t *)heap_caps_malloc(CHUNK, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        ok = dma && tmp;
+        mbedtls_sha256_context c; mbedtls_sha256_init(&c);
+        int r = 0;
+#if MBEDTLS_VERSION_MAJOR >= 3
+        if (ok) r = mbedtls_sha256_starts(&c, 0);
+#else
+        if (ok) r = mbedtls_sha256_starts_ret(&c, 0);
+#endif
+        for (size_t off = 0; ok && !r && off < len; ) {
+            size_t n = len - off > CHUNK ? CHUNK : len - off;
+            if (!flash_read(HUD_ANIM_FLASH_ADDR + off, tmp, n, dma)) { ok = false; break; }
+#if MBEDTLS_VERSION_MAJOR >= 3
+            r = mbedtls_sha256_update(&c, tmp, n);
+#else
+            r = mbedtls_sha256_update_ret(&c, tmp, n);
+#endif
+            off += n;
+        }
+        uint8_t h[32];
+#if MBEDTLS_VERSION_MAJOR >= 3
+        if (ok && !r) r = mbedtls_sha256_finish(&c, h);
+#else
+        if (ok && !r) r = mbedtls_sha256_finish_ret(&c, h);
+#endif
+        mbedtls_sha256_free(&c);
+        if (ok && (r || memcmp(h, expect_sha, 32) != 0)) { hud_log_write("[anim] flash contents do not match the uploaded SHA-256\n"); ok = false; }
+        if (dma) heap_caps_free(dma);
+        if (tmp) heap_caps_free(tmp);
+    }
+    if (ok) {
+        ok = hud_anim_open(anim_read, HUD_ANIM_FLASH_ADDR, anim_room()) && hud_anim_size() == len;
+        if (!ok) hud_anim_close();
+    }
+    xSemaphoreGive(s_lock);
+    return ok;
+#else
+    (void)expect_sha; (void)len; return false;
+#endif
+}
+
 #else
 extern "C" void hud_cams_start(void) {}
 extern "C" bool hud_cams_ready(void) { return false; }
@@ -275,4 +380,6 @@ extern "C" uint32_t hud_cams_max_db_bytes(void) { return 0; }
 extern "C" bool hud_cams_flash_erase(uint32_t) { return false; }
 extern "C" bool hud_cams_flash_write(uint32_t, const uint8_t *, size_t) { return false; }
 extern "C" bool hud_cams_reload(const uint8_t *, size_t) { return false; }
+extern "C" uint32_t hud_anim_flash_max_bytes(void) { return 0; }
+extern "C" bool hud_anim_flash_reload(const uint8_t *, size_t) { return false; }
 #endif

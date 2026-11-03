@@ -73,7 +73,7 @@ Photo supplied by WARMW00D: speed, gear, speed-limit sign, navigation and fuel i
 
 ### Screens from real MLB-Evo logs
 
-Rendered from Audi A4 B9 (MLB-Evo) CAN logs through the real decoder and UI (host render of the 428×142 panel): navigation arrows, speed-limit signs, ACC with the set speed, Lane Assist, destination.
+Rendered from Audi A4 B9 (MLB-Evo) CAN logs through the real decoder and UI (host render of the 428×142 panel): animated navigation arrows (v31.2.0, with the progress bar above them), speed-limit signs, ACC with the set speed, Lane Assist, arrival. The logs do not record the progress-bar value of the MLB-Evo navigation, so its fill in these renders is illustrative (derived from the distance).
 
 ![MLB-Evo screens: navigation, ACC, Lane Assist](docs/images/mlb-screens.png)
 
@@ -281,7 +281,7 @@ MQB was checked only with logs from one Skoda Octavia A7 (pre-facelift, retrofit
 | Lane Assist | `0x397` | `0x397`, same decoder; ACL without rate limit (green lasts 0.1–1 s) | works; warning flags not seen in the log |
 | Brightness | `0x5F0` + light sensor `0x5A0` + wheel `0x64F` | `0x5F0` byte 0; wheel from `0x5F0` byte 2 (16\|8); `0x5A0` and `0x64F` absent | ⚠️ wheel byte seen only at 100 (lights off) |
 
-Rendered from the Octavia A7 logs through the real decoder and UI (host render of the 428×142 panel; speed-limit signs, ACC with a vehicle ahead, Lane Assist lines):
+Rendered from the Octavia A7 logs through the real decoder and UI (host render of the 428×142 panel; animated navigation arrows with the progress bar, speed-limit signs, ACC, Lane Assist lines):
 
 ![MQB screens: ACC, Lane Assist, navigation](docs/images/mqb-screens.png)
 

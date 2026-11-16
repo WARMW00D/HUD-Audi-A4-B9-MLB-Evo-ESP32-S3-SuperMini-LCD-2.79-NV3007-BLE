@@ -6,8 +6,8 @@
 
 /* Внутренняя версия прошивки: major.minor.fix. Менять только эти три числа,
    строка версии для баннера и README собирается из них. */
-#define HUD_FW_VERSION_MAJOR  31
-#define HUD_FW_VERSION_MINOR  2
+#define HUD_FW_VERSION_MAJOR  32
+#define HUD_FW_VERSION_MINOR  0
 #define HUD_FW_VERSION_FIX    0
 #define HUD_FW_STR_(x) #x
 #define HUD_FW_STR(x)  HUD_FW_STR_(x)

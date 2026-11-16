@@ -518,6 +518,13 @@ static void update_status(void)
     o = swprintf(a, 600, L"%ls   [%ls]   %02u:%04.1f / %02u:%02u   ×%g   кадр %u / %u", g_cur >= 0 ? g_files[g_cur] : L"", plat_name(), p / 60000, (p % 60000) / 1000.0,
                  du / 60000, du / 1000 % 60, sim_speed(), sim_frames_pos(), sim_frames_total());
     if (sim_backlight >= 0) o += swprintf(a + o, 600 - o, L"   подсветка %d/255", sim_backlight);
+    {   /* нагрузка на экран: перерисовок LVGL в секунду и поток в панель (по времени LVGL, усреднение ~1 с) */
+        static uint32_t rn0, rp0, rt0; static double r_hz, r_kb;
+        uint32_t rn, rp, rt; sim_refresh_stats(&rn, &rp, &rt);
+        if (rt < rt0) { rn0 = rn; rp0 = rp; rt0 = rt; }
+        if (rt - rt0 >= 1000) { r_hz = (rn - rn0) * 1000.0 / (rt - rt0); r_kb = (rp - rp0) * 2.0 / 1024.0 * 1000.0 / (rt - rt0); rn0 = rn; rp0 = rp; rt0 = rt; }
+        o += swprintf(a + o, 600 - o, L"   перерисовок/с %.1f (%.0f КБ/с)", r_hz, r_kb);
+    }
     set_text(g_st1, a);
 
     o = 0;

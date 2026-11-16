@@ -35,6 +35,7 @@ void    hud_set_cams(bool on);         /* камеры: показ (HUD_CAMS) */
 bool    hud_get_cams(void);
 void    hud_set_cam_beep(bool on);     /* камеры: сигнал */
 bool    hud_get_cam_beep(void);
+void    hud_set_splash_plat(const char *s);   /* вторая строка заставки (по умолчанию «MLB EVO» / «MQB» по HUD_PLATFORM) */
 
 
 #ifdef __cplusplus

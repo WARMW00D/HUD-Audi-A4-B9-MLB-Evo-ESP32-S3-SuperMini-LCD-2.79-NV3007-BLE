@@ -34,6 +34,10 @@ void sim_step(uint32_t real_dt_ms);      /* вызывать часто (5-15 м
 void sim_set_platform(int p);            /* можно на ходу: текущая точка лога проигрывается заново новым декодером */
 int  sim_platform(void);
 
+/* Нагрузка на экран: сколько раз LVGL перерисовывал экран и сколько пикселей ушло бы в панель (нарастающим итогом),
+   lv_ms — время LVGL. Отрисовка частичная, полосами HUD_STRIPE_H — как в прошивке (lvgl_port.cpp). */
+void sim_refresh_stats(uint32_t *refreshes, uint32_t *pixels, uint32_t *lv_ms);
+
 /* ---- настройки HUD (то, что в машине меняется из приложения на Android) ---- */
 typedef struct {
     uint8_t lang;        /* HUD_LANG_*   */

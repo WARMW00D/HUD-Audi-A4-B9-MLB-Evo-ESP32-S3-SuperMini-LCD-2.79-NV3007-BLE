@@ -42,6 +42,8 @@
 #include "src/lcd_bl_bsp/lcd_bl_pwm_bsp.h"
 
 /* Шрифты: Montserrat Bold (SIL OFL 1.1) с табличными цифрами — см. tools/fonts/ */
+LV_FONT_DECLARE(hud_font_splash);   /* заставка «HUD VAG» (Inter Display Medium 72 px, только нужные буквы) */
+LV_FONT_DECLARE(hud_font_splash_sub); /* подпись платформы под ней (22 px) */
 LV_FONT_DECLARE(hud_font_speed);  /* скорость, цифры ~84 px                          */
 LV_FONT_DECLARE(hud_font_gear);   /* режим КП, ~15 px: P R N D S M E Offroad 1-9     */
 LV_FONT_DECLARE(hud_font_route);  /* маршрут, дистанция, ~19 px: 0-9 : . km h mi ft км м ч */
@@ -113,7 +115,7 @@ static lv_obj_t *turn_left_container, *turn_right_container;
 static lv_obj_t *turn_left_sym, *turn_right_sym;
 static lv_obj_t *gear_lbl, *kmh_lbl, *tank_icon, *tank_lbl;
 static lv_obj_t *car_box, *car_part[6], *car_under[6];   /* FL FR RL RR HOOD TRUNK — как биты DOOR_* */
-static lv_obj_t *link_lbl, *pair_lbl;
+static lv_obj_t *pair_lbl;
 static lv_obj_t *ota_panel, *ota_title, *ota_status, *ota_bar_bg, *ota_bar_fill;
 static volatile uint8_t ota_ui_state;
 static volatile uint32_t ota_ui_received, ota_ui_total;
@@ -157,6 +159,25 @@ static void set_font(lv_obj_t *o, const lv_font_t *f)
 {
     if (lv_obj_get_style_text_font(o, LV_PART_MAIN) != f)
         lv_obj_set_style_text_font(o, f, 0);
+}
+
+/* LVGL 8 перерисовывает объект при любом lv_obj_set_x/y/pos/height, даже с тем же значением,
+   поэтому из таймера (каждые 50 мс) двигаем объекты только когда координата реально меняется. */
+static void set_pos_c(lv_obj_t *o, lv_coord_t x, lv_coord_t y)
+{
+    if (lv_obj_get_style_x(o, LV_PART_MAIN) != x || lv_obj_get_style_y(o, LV_PART_MAIN) != y) lv_obj_set_pos(o, x, y);
+}
+static void set_x_c(lv_obj_t *o, lv_coord_t x)
+{
+    if (lv_obj_get_style_x(o, LV_PART_MAIN) != x) lv_obj_set_x(o, x);
+}
+static void set_y_c(lv_obj_t *o, lv_coord_t y)
+{
+    if (lv_obj_get_style_y(o, LV_PART_MAIN) != y) lv_obj_set_y(o, y);
+}
+static void set_h_c(lv_obj_t *o, lv_coord_t h)
+{
+    if (lv_obj_get_style_height(o, LV_PART_MAIN) != h) lv_obj_set_height(o, h);
 }
 
 static void set_img_color(lv_obj_t *o, uint32_t hex)
@@ -510,6 +531,98 @@ static void hud_ota_ui_update(void)
 /* ============================================================================
    Обновление экрана — lv_timer, 50 мс, внутри задачи LVGL (под мьютексом)
    ========================================================================== */
+/* ---------- заставка, пока нет связи ---------- */
+/* Весь экран: «HUD VAG» крупно, тонкая линия с градиентом, подпись платформы (MLB EVO / MQB — по флагу сборки HUD_PLATFORM).
+   Появляется, только если связи со сниффером нет дольше SPLASH_DELAY_MS (при включении связь обычно поднимается быстро — тогда её не видно), плавно (0,7 с);
+   как только связь появилась (link_up), пропадает сразу, без затухания. */
+#if HUD_PLATFORM == HUD_PLATFORM_MQB
+#define SPLASH_PLAT_DEFAULT "MQB"
+#else
+#define SPLASH_PLAT_DEFAULT "MLB EVO"
+#endif
+#define SPLASH_DELAY_MS   1500    /* столько связи не должно быть, чтобы заставка появилась */
+#define SPLASH_TITLE_CY   46      /* центр заглавных «HUD VAG» по вертикали */
+#define SPLASH_LINE_Y     88
+#define SPLASH_SUB_CY     110
+#define SPLASH_TITLE_LS   9       /* разрядка, px */
+#define SPLASH_SUB_LS     8
+#define C_SPLASH_TITLE    0xf2f5f8
+#define C_SPLASH_SUB      0x9db0c4
+static char      g_splash_plat[24] = SPLASH_PLAT_DEFAULT;
+static lv_obj_t *splash, *splash_in, *splash_sub;
+
+void hud_set_splash_plat(const char *s)
+{
+    if (s && *s) { strncpy(g_splash_plat, s, sizeof g_splash_plat - 1); g_splash_plat[sizeof g_splash_plat - 1] = 0; }
+}
+
+static lv_obj_t *splash_label(lv_obj_t *par, const lv_font_t *f, const char *s, int ls, uint32_t col, int cap_cy)
+{
+    lv_obj_t *l = lv_label_create(par);
+    lv_label_set_long_mode(l, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_font(l, f, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(col), 0);
+    lv_obj_set_style_text_letter_space(l, ls, 0);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(l, HUD_PANEL_W);
+    lv_label_set_text(l, s);
+    lv_font_glyph_dsc_t g; int top = 0, h = 0;
+    if (lv_font_get_glyph_dsc(f, &g, 'H', 0)) { h = g.box_h; top = (f->line_height - f->base_line) - g.ofs_y - g.box_h; }
+    lv_obj_set_pos(l, 0, cap_cy - (top + h / 2));
+    return l;
+}
+
+static lv_obj_t *splash_rule(lv_obj_t *par, int x, int w, bool rise)
+{
+    lv_obj_t *o = lv_obj_create(par);
+    lv_obj_remove_style_all(o);
+    lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(o, w, 2);
+    lv_obj_set_pos(o, x, SPLASH_LINE_Y);
+    lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(o, lv_color_hex(rise ? 0x000000 : C_NAV_ARROW), 0);
+    lv_obj_set_style_bg_grad_color(o, lv_color_hex(rise ? C_NAV_ARROW : 0x000000), 0);
+    lv_obj_set_style_bg_grad_dir(o, LV_GRAD_DIR_HOR, 0);
+    return o;
+}
+
+static void splash_build(lv_obj_t *scr)
+{
+    splash = lv_obj_create(scr);
+    lv_obj_remove_style_all(splash);
+    lv_obj_set_size(splash, HUD_PANEL_W, HUD_PANEL_H);
+    lv_obj_set_pos(splash, 0, 0);
+    lv_obj_set_style_bg_color(splash, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(splash, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(splash, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    splash_in = lv_obj_create(splash);              /* содержимое — отдельным слоем, чтобы плавно проявлять его на чёрном */
+    lv_obj_remove_style_all(splash_in);
+    lv_obj_set_size(splash_in, HUD_PANEL_W, HUD_PANEL_H);
+    lv_obj_clear_flag(splash_in, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    splash_label(splash_in, &hud_font_splash, "HUD VAG", SPLASH_TITLE_LS, C_SPLASH_TITLE, SPLASH_TITLE_CY);
+    splash_rule(splash_in, HUD_PANEL_W / 2 - 150, 150, true);
+    splash_rule(splash_in, HUD_PANEL_W / 2, 150, false);
+    splash_sub = splash_label(splash_in, &hud_font_splash_sub, g_splash_plat, SPLASH_SUB_LS, C_SPLASH_SUB, SPLASH_SUB_CY);
+    lv_obj_add_flag(splash, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void splash_fade_cb(void *o, int32_t v) { lv_obj_set_style_opa((lv_obj_t *)o, (lv_opa_t)v, 0); }
+
+static void splash_show(bool on)
+{
+    bool was = !lv_obj_has_flag(splash, LV_OBJ_FLAG_HIDDEN);
+    if (on && !was) {
+        lv_obj_clear_flag(splash, LV_OBJ_FLAG_HIDDEN);
+        lv_anim_t a; lv_anim_init(&a);
+        lv_anim_set_var(&a, splash_in); lv_anim_set_exec_cb(&a, splash_fade_cb);
+        lv_anim_set_values(&a, 0, 255); lv_anim_set_time(&a, 700);
+        lv_anim_start(&a);
+    } else if (!on && was) {
+        lv_anim_del(splash_in, splash_fade_cb);
+        lv_obj_add_flag(splash, LV_OBJ_FLAG_HIDDEN);   /* данные пошли — убираем сразу */
+    }
+}
+
 static void hud_update_cb(lv_timer_t *t)
 {
     (void)t;
@@ -519,7 +632,19 @@ static void hud_update_cb(lv_timer_t *t)
     hud_data_snapshot(&d);
     uint32_t now = hud_now_ms();
     char buf[32];
-    (void)now;
+    {   /* заставка: связи со сниффером нет дольше SPLASH_DELAY_MS (и это не отказ сопряжения — для него своя подсказка).
+           Как только связь появилась — убирается сразу */
+        static bool nl_run; static uint32_t nl_since;
+        bool nl = !d.link_up && !hud_src_pair_failed();
+        if (!nl) nl_run = false; else if (!nl_run) { nl_run = true; nl_since = now; }
+        bool sp = nl && (uint32_t)(now - nl_since) >= SPLASH_DELAY_MS;
+        splash_show(sp);
+        if (sp) {
+            set_text(splash_sub, g_splash_plat);
+            update_brightness(&d, now);
+            return;
+        }
+    }
     uint16_t lim_kmh_for_speed = 0;
 
     /* --- подпись единиц скорости (язык / единицы могут смениться на ходу) --- */
@@ -568,13 +693,12 @@ static void hud_update_cb(lv_timer_t *t)
     }
 
     /* --- связь, яркость --- */
-    /* BLE-сопряжение не удаётся — подсказка вместо значка связи */
+    /* BLE-сопряжение не удаётся — подсказка (без связи вообще — заставка) */
     bool pf = !d.link_up && hud_src_pair_failed();
     if (pf) set_text(pair_lbl, g_lang == HUD_LANG_EN
         ? "Pairing rejected. Check the CAN gateway passkey."
         : "Сопряжение не принято. Проверьте код доступа CAN-шлюза.");
     vis(pair_lbl, pf);
-    vis(link_lbl, !d.link_up && !pf);
     update_brightness(&d, now);
 
     /* --- скорость --- */
@@ -937,9 +1061,9 @@ static void hud_update_cb(lv_timer_t *t)
             /* дорога всегда залита целиком; приближение к манёвру показывает бар над стрелкой */
             lv_coord_t ty = hud_native_y(ni->ry);
             lv_coord_t full = hud_native_y(166);
-            lv_obj_set_y(road_clip, ty);
-            lv_obj_set_height(road_clip, full > ty ? full - ty : 1);
-            lv_obj_set_pos(arrow_road, hud_native_x(ni->rx), 0);
+            set_y_c(road_clip, ty);
+            set_h_c(road_clip, full > ty ? full - ty : 1);
+            set_pos_c(arrow_road, hud_native_x(ni->rx), 0);
         }
         {
             bool pg = ni != NULL && (d.valid & V_MDIST) && d.bargraph <= 100;
@@ -1002,10 +1126,10 @@ static void hud_update_cb(lv_timer_t *t)
                 lv_coord_t over = nx + (lv_coord_t)next_cur->img->header.w - lim;
                 if (over > 0) shift = over;
             }
-            lv_obj_set_x(nav_dist_lbl, -shift);
-            lv_obj_set_pos(next_img, nx - shift, ny);
+            set_x_c(nav_dist_lbl, -shift);
+            set_pos_c(next_img, nx - shift, ny);
         } else {
-            lv_obj_set_x(nav_dist_lbl, 0);
+            set_x_c(nav_dist_lbl, 0);
         }
         (void)calc;
     }
@@ -1319,14 +1443,6 @@ void build_hud_mockup(void)
     lv_obj_set_style_text_color(pair_lbl, lv_color_hex(C_ORANGE), 0);
     lv_obj_add_flag(pair_lbl, LV_OBJ_FLAG_HIDDEN);
 
-    link_lbl = lv_label_create(scr);
-    lv_label_set_text(link_lbl, LV_SYMBOL_BLUETOOTH " ...");
-    lv_obj_set_style_text_font(link_lbl, LV_FONT_DEFAULT, 0);
-    lv_obj_set_style_text_color(link_lbl, lv_color_hex(0x666666), 0);
-    /* в центре области стрелки: без связи стрелки и машинки всё равно нет,
-       а низ области занят баром ускорения */
-    hud_native_align(link_lbl, LV_ALIGN_TOP_LEFT, LX + 132 + NAV_AREA_W / 2 - 18, 5 + 58 - 8);
-
     /* ===== Правая зона ===== */
     const int RX = 265 + RIGHT_ZONE_SHIFT_X;
 
@@ -1398,6 +1514,8 @@ void build_hud_mockup(void)
                                         &img_blink_l_outline, &img_blink_l_fill, &turn_left_sym);
     turn_right_container = make_blinker(scr, BLINK_R_X, BLINK_Y,
                                         &img_blink_r_outline, &img_blink_r_fill, &turn_right_sym);
+
+    splash_build(scr);                              /* заставка при отсутствии связи: поверх HUD, под экраном обновления ПО */
 
     lv_obj_move_foreground(ota_panel);
     lv_timer_create(hud_update_cb, 50, NULL);

@@ -69,8 +69,18 @@ uint32_t sim_fb[SIM_W * SIM_H];
 volatile bool sim_fb_dirty;
 int sim_backlight = -1;
 
+static uint32_t s_refr_n, s_refr_px;
+void sim_refresh_stats(uint32_t *refreshes, uint32_t *pixels, uint32_t *lv_ms)
+{
+    if (refreshes) *refreshes = s_refr_n;
+    if (pixels) *pixels = s_refr_px;
+    if (lv_ms) *lv_ms = s_lv_tick;
+}
+
 static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *a, lv_color_t *px)
 {
+    s_refr_px += (uint32_t)(a->x2 - a->x1 + 1) * (uint32_t)(a->y2 - a->y1 + 1);
+    if (lv_disp_flush_is_last(drv)) s_refr_n++;
     for (int y = a->y1; y <= a->y2; y++) {
         uint32_t *dst = sim_fb + y * SIM_W + a->x1;
         for (int x = a->x1; x <= a->x2; x++, px++) *dst++ = lv_color_to32(*px) & 0x00FFFFFFu;
@@ -412,6 +422,7 @@ void sim_set_platform(int p)
     p = p == SIM_PLATFORM_MQB ? SIM_PLATFORM_MQB : SIM_PLATFORM_MLB_EVO;
     if (p == s_plat) return;
     s_plat = p;
+    hud_set_splash_plat(p == SIM_PLATFORM_MQB ? "MQB" : "MLB EVO");
     /* у нового декодера состояние пустое или старое: та же точка лога с «разгоном» — уже через него */
     if (s_loaded) sim_seek_ms(sim_pos_ms());
 }
@@ -423,16 +434,16 @@ void sim_init(void)
 {
     static lv_disp_draw_buf_t draw;
     static lv_disp_drv_t      disp;
-    static lv_color_t         buf1[SIM_W * SIM_H];
+    static lv_color_t         buf1[SIM_W * HUD_STRIPE_H];
 
     lv_init();
     lv_log_register_print_cb(lv_log_cb);
-    lv_disp_draw_buf_init(&draw, buf1, NULL, SIM_W * SIM_H);
+    lv_disp_draw_buf_init(&draw, buf1, NULL, SIM_W * HUD_STRIPE_H);
     lv_disp_drv_init(&disp);
     disp.hor_res = SIM_W; disp.ver_res = SIM_H;
     disp.flush_cb = flush_cb;
     disp.draw_buf = &draw;
-    disp.full_refresh = 1;                       /* как в прошивке */
+    disp.full_refresh = 0;                       /* частичная отрисовка полосами — как в прошивке (lvgl_port.cpp) */
     lv_disp_drv_register(&disp);
     hud_data_set_link(false);
     build_hud_mockup();

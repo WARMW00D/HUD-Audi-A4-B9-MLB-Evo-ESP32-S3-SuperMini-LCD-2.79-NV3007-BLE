@@ -1,4 +1,4 @@
-# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v31.2.0
+# HUD for Audi A4 B9 (MLB-Evo) — ESP32-S3 Super Mini / NV3007 2.79″ / BLE — v32.0.0
 
 [Русская версия](README_ru.md) · [Android companion app](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-Android-App)
 
@@ -6,11 +6,11 @@ A DIY head-up display showing vehicle data from the Audi Infotainment CAN (MLB-E
 
 **Verified vehicle configuration:** operation was checked on an **Audi A4 B9 facelift (restyling) with MIB3 High infotainment**.
 
-**Firmware: v31.2.0. Android app: 1.6.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.6.0 APK is in the app repository release.
+**Firmware: v32.0.0. Android app: 1.6.0.** This repository contains firmware source and wiring diagrams. Android source lives in its own repository. Prebuilt app firmware (two builds, MLB-Evo and MQB) is in Releases below; the Android 1.6.0 APK is in the app repository release.
 
 ## Tank capacity, acceleration bar and overspeed tolerance
 
-Source versions: **HUD firmware v31.2.0 / Android app 1.6.0 (versionCode 9)**.
+Source versions: **HUD firmware v32.0.0 / Android app 1.6.0 (versionCode 9)**.
 
 - **Tank capacity:** enter a whole number from **1 to 200 litres**; default **54 L**. The capacity is always entered in litres, even with US gallons selected, and updates the HUD fuel-to-add calculation.
 - **Acceleration bar:** turn it on or off from the app. When enabled, the existing bar uses valid acceleration/speed data; it remains empty while stationary or without valid data.
@@ -18,6 +18,13 @@ Source versions: **HUD firmware v31.2.0 / Android app 1.6.0 (versionCode 9)**.
 - All three settings are confirmed by BLE readback and saved in HUD NVS. Existing settings, phone owner and gateway bonds are retained. A BOOT phone-binding reset also retains these settings.
 
 These controls need **app 1.4.1 or newer + firmware v30.0.0 or later**. App 1.4.1 still supports older firmware: missing controls are disabled. Prebuilt BINs and APKs are published in Releases. If v30.0 and its OTA partition table are already installed, v30.0 uses the same layout; earlier firmware needs the initial USB/partition upgrade described below.
+
+## v32.0.0 changes
+
+- Splash instead of the Bluetooth icon: while there is no BLE link to the sniffer for more than 1.5 s, the HUD shows a full-screen "HUD VAG" with the platform below it (**MLB EVO** or **MQB**, from `HUD_PLATFORM`). It fades in over 0.7 s and disappears at once when the link comes up. The old Bluetooth icon is removed. The "pairing rejected" hint stays.
+- MQB: ACC set speed (`0x30C`) is now read as a 10-bit field at bit 12, ×0.32 km/h, `0x3FF` = not set — the same format as `0x2A6` on MLB-Evo. Checked against Octavia and Passat logs: the old 6-bit field (bit 16, 5·v+5 km/h) was just the top 6 bits of this one, so the values are the same but the step is 0.32 km/h instead of 5 km/h.
+- Faster drawing: the display SPI-DMA runs at 40 MHz (`HUD_LCD_DMA_SPI_HZ`; go back to 20000000 if the picture glitches) with 32-line stripes (`HUD_STRIPE_H`); the large speed font is stored uncompressed; the road/arrow/next-manoeuvre objects are moved only when their position really changes (LVGL repainted them every 50 ms even in place); the per-ID CAN debug counters run only with `HUD_LOG_CAN 1`.
+- Windows simulator (`tools/hud_sim_win`): plays CAN logs through the real decoder and UI, now with partial drawing in stripes like the firmware and a redraws-per-second counter in the status line (`hud_shot` prints the same numbers). Platform switch MLB-Evo / MQB is in the menu; the splash can be seen by starting without a log. See `tools/hud_sim_win/README.md`.
 
 ## v31.2.0 changes
 
@@ -83,12 +90,12 @@ Speed-camera alerts (camera icon, distance and limit) in the same renders:
 
 ## Download firmware BIN
 
-[v31.2.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v31.2.0) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.2.0/SHA256SUMS-v31.2.0.txt)
+[v32.0.0 release](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/tag/v32.0.0) · [SHA-256](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v32.0.0/SHA256SUMS-v32.0.0.txt)
 
 The platform is selected at build time (`HUD_PLATFORM` in `hud_config.h`), so there are two images:
 
-- [MLB-Evo app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.2.0/HUD-SuperMini-v31.2.0-MLB-app.bin) — Audi A4 B9 (MLB-Evo), the tested platform.
-- [MQB app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v31.2.0/HUD-SuperMini-v31.2.0-MQB-app.bin) — VAG MQB, **experimental**: only checked on a pre-facelift Octavia A7, some signals are hypotheses.
+- [MLB-Evo app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v32.0.0/HUD-SuperMini-v32.0.0-MLB-app.bin) — Audi A4 B9 (MLB-Evo), the tested platform.
+- [MQB app-BIN](https://github.com/WARMW00D/HUD-Audi-A4-B9-MLB-Evo-ESP32-S3-SuperMini-LCD-2.79-NV3007-BLE/releases/download/v32.0.0/HUD-SuperMini-v32.0.0-MQB-app.bin) — VAG MQB, **experimental**: only checked on a pre-facelift Octavia A7, some signals are hypotheses.
 
 **OTA application only**: no bootloader or partition table. Initial installation requires USB with the project `partitions.csv`; an app-BIN cannot migrate partitions. The v30.0 two-slot OTA layout is compatible. BLE OTA transfer to the HUD has been confirmed on the real device by the maintainer (v30.0).
 
@@ -203,7 +210,7 @@ Put `supermini_hud/config/lv_conf.h` next to the installed `lvgl/` directory. Re
 
 **Upgrading v28.x → v30.0 requires USB flashing of the new partition table. Set Erase All Flash to Disabled.** Confirm the build uses the supplied CSV and writes the table at 0x8000; flashing only the application does not migrate partitions. NVS remains at 0x9000 with size 0x5000, so settings and bonds are intended to survive, subject to device verification.
 
-Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v31.2.0 / BLE OTA` and a next-slot capacity of 2031616.
+Two OTA slots are **0x1F0000 / 2,031,616 bytes** each. Check the compiled application size. The first boot should report `[fw] HUD Super Mini v32.0.0 / BLE OTA` and a next-slot capacity of 2031616.
 
 For gateway authentication, copy `secrets.example.h` to `secrets.h` and set its `BLE_PASSKEY` to match the gateway. `secrets.h` is ignored by Git. This is separate from the phone PIN, `HUD_SETTINGS_PIN` in `user_config.h`.
 
@@ -274,7 +281,7 @@ MQB was checked only with logs from one Skoda Octavia A7 (pre-facelift, retrofit
 |---|---|---|---|
 | Speed, gear, turn signals, doors, speed-limit signs (VZE), Side Assist | same frames | same frames | works on replay |
 | ACC active | `0x2A8` 16\|3 | `0x2A7` bit 58 | ⚠️ matches `0x30C` bit 61 in time |
-| ACC set speed | `0x2A6` 12\|10, ×0.32 km/h | `0x30C` 16\|6: 5·v+5 km/h, 63 = not set | ⚠️ values 5/7/9/11/19 give 30/40/50/60/100 |
+| ACC set speed | `0x2A6` 12\|10, ×0.32 km/h | `0x30C` 12\|10, ×0.32 km/h, `0x3FF` = not set | works on replay (Octavia, Passat logs) |
 | Vehicle ahead, time gap | `0x2A6` 45\|2 / 37\|3 | `0x30C` 45\|2 / 37\|3 | ⚠️ same layout assumed |
 | ACC lane guidance, traffic-jam mode | `0x2A6` 7\|2 / 62\|2 | not decoded | missing |
 | Pre sense | `0x2A9` | frame absent | disabled |
@@ -313,6 +320,7 @@ CAN signal verification depends on the vehicle and equipment. The inherited obse
 - `supermini_hud/config/` — LVGL configuration example.
 - `supermini_hud/tests/` — host tests and stubs.
 - `supermini_hud/tools/` — image/font generators, previews and CAN utilities.
+- `tools/hud_sim_win/` — Windows simulator: plays CAN logs through the real decoder and UI (see its README).
 - `docs/` — OTA and CAN/gateway guides in English and Russian.
 - `schematics/` — Russian and English revision 3 SVG, PNG and PDF with the Infotainment CAN (MLB-Evo) / Comfort CAN (MQB) label; display DC-DC input is 5 V. Revision 2 remains available.
 

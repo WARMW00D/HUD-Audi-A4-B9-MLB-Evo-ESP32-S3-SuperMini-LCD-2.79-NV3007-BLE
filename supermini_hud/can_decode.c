@@ -455,7 +455,7 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
 
     taskENTER_CRITICAL(&s_mux);
     s_data.frames_rx++;
-    dbg_note(id, ext, data, dlc);
+    if (HUD_LOG_CAN) dbg_note(id, ext, data, dlc);
     taskEXIT_CRITICAL(&s_mux);
 
     if (ext) {
@@ -498,9 +498,9 @@ void can_decode_frame(uint32_t id, bool ext, const uint8_t *data, uint8_t dlc)
         s_data.acc_status = sig(d, 58, 1) ? 3 : 2;           /* 3 активен, 2 ожидание */
         touch(S_ACC);
         break;
-    case 0x30C: { /* MQB: ACC_02 — заданная скорость 16|6: км/ч = 5·v+5, 63 = не задана (⚠️) */
-        uint32_t v = sig(d, 16, 6);
-        s_data.acc_set_raw = (v == 63) ? 0x3FF : (uint16_t)((((v * 5u + 5u) * 100u) + 16u) / 32u);   /* км/ч -> ×0.32 */
+    case 0x30C: { /* MQB: ACC_02 — заданная скорость 12|10, ×0.32 км/ч, 0x3FF = не задана
+                     (формула Karoq-CAN-HUD; сверено по логам Octavia/Passat: старое 16|6 = старшие 6 бит этого поля) */
+        s_data.acc_set_raw = sig(d, 12, 10);                  /* 0x3FF -> «не задана» (как на MLB) */
         /* Машина впереди: 45|2 — как в ACC_12 на A4 (в активном ACC на Октавии 94 % кадров = 1,
            остальные 0; ⚠️ по совпадению с раскладкой A4, не по документации). Зазор 37|3. */
         s_data.acc_object = sig(d, 45, 2);
